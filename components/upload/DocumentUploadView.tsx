@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SiteRecord, UserAccount, DocumentRecord, DocumentType } from '@/lib/types';
 import { formatCurrency, formatFileSize, generateUUID, optimizeImageForAi } from '@/lib/utils';
 import { uploadFileToSupabaseStorage, saveDocumentToSupabase } from '@/lib/store';
@@ -87,6 +87,45 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
 
   // Mobile View Tab (Toggle between Document Preview and Invoice Form on small screens)
   const [mobileTab, setMobileTab] = useState<'form' | 'preview'>('form');
+
+  // Review Assistance & Scroll Synchronization Refs
+  const invoiceListContainerRef = useRef<HTMLDivElement>(null);
+  const isProgrammaticScrollRef = useRef<boolean>(false);
+  const scrollDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Helper to scroll to the first invoice card belonging to a specific attachment
+  const scrollToInvoiceForFile = (fileId: string) => {
+    isProgrammaticScrollRef.current = true;
+    const cardEl = document.getElementById(`invoice-card-${fileId}`);
+    if (cardEl) {
+      cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    if (scrollDebounceTimerRef.current) clearTimeout(scrollDebounceTimerRef.current);
+    scrollDebounceTimerRef.current = setTimeout(() => {
+      isProgrammaticScrollRef.current = false;
+    }, 700);
+  };
+
+  // Scroll listener on invoice cards list: when scrolling down through cards, toggle preview to match visible attachment
+  const handleInvoiceListScroll = () => {
+    if (isProgrammaticScrollRef.current || !invoiceListContainerRef.current) return;
+    const container = invoiceListContainerRef.current;
+    const containerTop = container.getBoundingClientRect().top;
+    const cards = container.querySelectorAll<HTMLElement>('[data-file-id]');
+
+    for (let i = 0; i < cards.length; i++) {
+      const card = cards[i];
+      const rect = card.getBoundingClientRect();
+      // If the top of the card is within the upper active zone of the scroll container
+      if (rect.bottom > containerTop + 30 && rect.top < containerTop + 180) {
+        const fileId = card.getAttribute('data-file-id');
+        if (fileId && fileId !== activeFileId) {
+          setActiveFileId(fileId);
+        }
+        break;
+      }
+    }
+  };
 
   // Keep siteId in sync if selectedSiteId prop changes
   useEffect(() => {
@@ -220,8 +259,8 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
     }
 
     // Trigger AI extraction for all newly selected files in parallel (with token-optimized payload)
-    await Promise.all(
-      newFileItems.map(async (item) => {
+    const scanResults = await Promise.all(
+      newFileItems.map(async (item, fileIndex) => {
         try {
           // Pre-process and optimize images to save up to 75% vision tokens
           const fileToScan = await optimizeImageForAi(item.file);
@@ -290,24 +329,17 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                 };
               });
 
-              setInvoices((prev) => [...prev, ...parsedInvoices]);
-
-              setUploadedFiles((prev) =>
-                prev.map((f) =>
-                  f.id === item.id
-                    ? {
-                        ...f,
-                        status: 'ready',
-                        statusMessage: `${parsedInvoices.length} invoice(s) extracted`,
-                      }
-                    : f
-                )
-              );
-              return;
+              return {
+                fileId: item.id,
+                fileIndex,
+                status: 'ready' as const,
+                statusMessage: `${parsedInvoices.length} document record(s) extracted`,
+                invoices: parsedInvoices,
+              };
             }
           }
 
-          // Non-OK or fallback
+          // Fallback parsing if status not OK or missing payload
           const cleanName = item.file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
           const year = new Date().getFullYear();
           const randomNum = Math.floor(1000 + Math.random() * 9000);
@@ -338,22 +370,13 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
             notes: detectedType === 'Ledger' ? 'Account Statement' : undefined,
           };
 
-          setInvoices((prev) => [...prev, fallbackInvoice]);
-          setUploadedFiles((prev) =>
-            prev.map((f) =>
-              f.id === item.id
-                ? {
-                    ...f,
-                    status: 'ready',
-                    statusMessage: 'Extracted via fallback parser',
-                  }
-                : f
-            )
-          );
-          setAiExtractionError({
-            message: 'AI document parsing returned an unexpected response. Click below to retry.',
-            isHighDemand: false,
-          });
+          return {
+            fileId: item.id,
+            fileIndex,
+            status: 'ready' as const,
+            statusMessage: 'Extracted via fallback parser',
+            invoices: [fallbackInvoice],
+          };
         } catch (err) {
           console.error(`AI Extraction failed for ${item.file.name}:`, err);
           const errMsg = err instanceof Error ? err.message : String(err);
@@ -364,20 +387,50 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
             isHighDemand: is503,
           });
 
-          setUploadedFiles((prev) =>
-            prev.map((f) =>
-              f.id === item.id
-                ? {
-                    ...f,
-                    status: 'error',
-                    statusMessage: 'Extraction failed, manual entry required',
-                  }
-                : f
-            )
-          );
+          return {
+            fileId: item.id,
+            fileIndex,
+            status: 'error' as const,
+            statusMessage: 'Extraction failed, manual entry required',
+            invoices: [],
+          };
         }
       })
     );
+
+    // 1. Update uploadedFiles status
+    setUploadedFiles((prev) =>
+      prev.map((f) => {
+        const res = scanResults.find((r) => r.fileId === f.id);
+        if (res) {
+          return {
+            ...f,
+            status: res.status,
+            statusMessage: res.statusMessage,
+          };
+        }
+        return f;
+      })
+    );
+
+    // 2. Order newly extracted records strictly by original attachment fileIndex and pageNumber
+    scanResults.sort((a, b) => a.fileIndex - b.fileIndex);
+    const orderedNewInvoices = scanResults.flatMap((r) => r.invoices);
+
+    // 3. Keep complete invoices list strictly ordered to match uploadedFiles attachments list
+    setInvoices((prev) => {
+      const combined = [...prev, ...orderedNewInvoices];
+      // Map file order across all uploaded files
+      const allFileIds = [...uploadedFiles.map((f) => f.id), ...newFileItems.map((f) => f.id)];
+      const fileOrderMap = new Map(allFileIds.map((id, i) => [id, i]));
+
+      return combined.sort((a, b) => {
+        const orderA = fileOrderMap.has(a.fileId) ? fileOrderMap.get(a.fileId)! : 9999;
+        const orderB = fileOrderMap.has(b.fileId) ? fileOrderMap.get(b.fileId)! : 9999;
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.pageNumber || 1) - (b.pageNumber || 1);
+      });
+    });
 
     setIsAiScanning(false);
   };
@@ -434,11 +487,10 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
   };
 
   const handleAddInvoiceForFile = (fileId: string) => {
-    const fileInvoices = invoices.filter((i) => i.fileId === fileId);
-    const last = fileInvoices[fileInvoices.length - 1];
-    setInvoices((prev) => [
-      ...prev,
-      {
+    setInvoices((prev) => {
+      const fileInvoices = prev.filter((i) => i.fileId === fileId);
+      const last = fileInvoices[fileInvoices.length - 1];
+      const newInvoice: InvoiceDraftItem = {
         id: generateUUID(),
         fileId,
         vendorName: last?.vendorName || '',
@@ -447,8 +499,24 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
         type: 'Invoice',
         amount: '',
         pageNumber: (last?.pageNumber || 1) + 1,
-      },
-    ]);
+      };
+
+      // Insert directly after the last invoice of this file to preserve attachment order
+      let lastIdx = -1;
+      for (let i = prev.length - 1; i >= 0; i--) {
+        if (prev[i].fileId === fileId) {
+          lastIdx = i;
+          break;
+        }
+      }
+
+      if (lastIdx !== -1) {
+        const copy = [...prev];
+        copy.splice(lastIdx + 1, 0, newInvoice);
+        return copy;
+      }
+      return [...prev, newInvoice];
+    });
   };
 
   const handleRemoveInvoice = (invoiceId: string) => {
@@ -457,16 +525,20 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
   };
 
   const handleDuplicateInvoice = (invoiceId: string) => {
-    const target = invoices.find((i) => i.id === invoiceId);
-    if (!target) return;
-    setInvoices((prev) => [
-      ...prev,
-      {
+    setInvoices((prev) => {
+      const targetIndex = prev.findIndex((i) => i.id === invoiceId);
+      if (targetIndex === -1) return prev;
+      const target = prev[targetIndex];
+      const duplicated: InvoiceDraftItem = {
         ...target,
         id: generateUUID(),
         invoiceNumber: target.invoiceNumber ? `${target.invoiceNumber}-COPY` : '',
-      },
-    ]);
+      };
+      // Insert duplicate directly after original to preserve sequence
+      const copy = [...prev];
+      copy.splice(targetIndex + 1, 0, duplicated);
+      return copy;
+    });
   };
 
   const applyGstRate = (index: number, ratePct: number) => {
@@ -599,9 +671,20 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
   );
 
   const activeFile = uploadedFiles.find((f) => f.id === activeFileId) || uploadedFiles[0];
+  const activeFileIndex = uploadedFiles.findIndex((f) => f.id === (activeFile?.id || ''));
   const isActiveImage =
     activeFile?.fileType?.includes('image') ||
     /\.(jpg|jpeg|png|webp|gif)$/i.test(activeFile?.file?.name || '');
+
+  const handleNavigateAttachment = (direction: 'prev' | 'next') => {
+    if (uploadedFiles.length === 0) return;
+    const newIndex = direction === 'prev' ? activeFileIndex - 1 : activeFileIndex + 1;
+    if (newIndex >= 0 && newIndex < uploadedFiles.length) {
+      const targetFile = uploadedFiles[newIndex];
+      setActiveFileId(targetFile.id);
+      scrollToInvoiceForFile(targetFile.id);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white flex flex-col font-sans relative antialiased selection:bg-purple-500 selection:text-white">
@@ -819,25 +902,32 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                       <button
                         key={item.id}
                         type="button"
-                        onClick={() => setActiveFileId(item.id)}
+                        onClick={() => {
+                          setActiveFileId(item.id);
+                          scrollToInvoiceForFile(item.id);
+                        }}
                         className={`px-3 py-2 rounded-xl border flex items-center gap-2 transition-all cursor-pointer shrink-0 text-left ${
                           isSelected
                             ? 'bg-purple-950/70 border-purple-500/80 text-white shadow-md ring-1 ring-purple-500/30'
                             : 'bg-neutral-950/80 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700 hover:bg-neutral-900/80'
                         }`}
+                        title={`Attachment #${idx + 1}: ${item.file.name} (Click to switch preview and scroll to its extracted data)`}
                       >
                         <span
                           className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold ${
                             isSelected ? 'bg-purple-600 text-white' : 'bg-neutral-800 text-neutral-400'
                           }`}
                         >
-                          {idx + 1}
+                          #{idx + 1}
                         </span>
                         <div className="max-w-[130px] truncate text-xs font-semibold">
                           {item.file.name}
                         </div>
                         {fileInvoicesCount > 0 && (
-                          <span className="text-[10px] font-mono text-purple-300 bg-purple-900/50 px-1.5 py-0.5 rounded font-bold">
+                          <span
+                            className="text-[10px] font-mono text-purple-300 bg-purple-900/50 px-1.5 py-0.5 rounded font-bold"
+                            title={`${fileInvoicesCount} record(s) extracted`}
+                          >
                             {fileInvoicesCount}
                           </span>
                         )}
@@ -860,18 +950,48 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                 {activeFile && (
                   <div className="bg-neutral-950 rounded-2xl border border-neutral-800 overflow-hidden shadow-2xl flex flex-col">
                     {/* Preview Toolbar */}
-                    <div className="bg-neutral-900/90 border-b border-neutral-800 px-4 py-2.5 flex items-center justify-between shrink-0">
+                    <div className="bg-neutral-900/90 border-b border-neutral-800 px-4 py-2.5 flex items-center justify-between shrink-0 gap-2">
                       <div className="flex items-center gap-2 overflow-hidden">
                         <Icons.File className="w-4 h-4 text-purple-400 shrink-0" />
-                        <span className="text-xs font-bold text-neutral-200 truncate max-w-[240px]">
+                        <span className="text-[11px] font-mono font-bold text-purple-300 bg-purple-950/80 border border-purple-800/60 px-2 py-0.5 rounded-md shrink-0">
+                          Att. #{activeFileIndex + 1}
+                        </span>
+                        <span className="text-xs font-bold text-neutral-200 truncate max-w-[180px] sm:max-w-[220px]">
                           {activeFile.file.name}
                         </span>
-                        <span className="text-[10px] font-mono text-neutral-400 bg-neutral-950 border border-neutral-800 px-2 py-0.5 rounded shrink-0">
+                        <span className="text-[10px] font-mono text-neutral-400 bg-neutral-950 border border-neutral-800 px-2 py-0.5 rounded shrink-0 hidden sm:inline-block">
                           {formatFileSize(activeFile.fileSize)}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* Prev / Next Attachment Navigation Buttons */}
+                        {uploadedFiles.length > 1 && (
+                          <div className="flex items-center gap-1 bg-neutral-950 border border-neutral-800 rounded-xl p-0.5 shadow-inner">
+                            <button
+                              type="button"
+                              onClick={() => handleNavigateAttachment('prev')}
+                              disabled={activeFileIndex <= 0}
+                              className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer"
+                              title="Previous Attachment"
+                            >
+                              <Icons.ChevronLeft className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="text-[10px] font-mono font-bold text-neutral-300 px-1 whitespace-nowrap">
+                              {activeFileIndex + 1} / {uploadedFiles.length}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleNavigateAttachment('next')}
+                              disabled={activeFileIndex >= uploadedFiles.length - 1}
+                              className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer"
+                              title="Next Attachment"
+                            >
+                              <Icons.ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+
                         {activeFile.blobUrl && (
                           <a
                             href={activeFile.blobUrl}
@@ -884,7 +1004,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                             <span className="hidden sm:inline">Popout</span>
                           </a>
                         )}
-                        <span className="text-[10px] font-bold bg-purple-950 text-purple-300 border border-purple-800/60 px-2 py-0.5 rounded-md">
+                        <span className="text-[10px] font-bold bg-purple-950 text-purple-300 border border-purple-800/60 px-2 py-0.5 rounded-md hidden md:inline-block">
                           Live Full View
                         </span>
                       </div>
@@ -1192,18 +1312,41 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
+                  <div
+                    ref={invoiceListContainerRef}
+                    onScroll={handleInvoiceListScroll}
+                    className="space-y-4 max-h-[520px] overflow-y-auto pr-1 custom-scrollbar scroll-smooth"
+                  >
                     {invoices.map((inv, index) => {
-                      const sourceFile = uploadedFiles.find((f) => f.id === inv.fileId);
+                      const fileIdx = uploadedFiles.findIndex((f) => f.id === inv.fileId);
+                      const sourceFile = fileIdx !== -1 ? uploadedFiles[fileIdx] : undefined;
+                      const isFirstOfFile = invoices.findIndex((i) => i.fileId === inv.fileId) === index;
+                      const isCardActive = activeFile?.id === inv.fileId;
 
                       return (
                         <div
                           key={inv.id}
-                          className="bg-neutral-950/80 border border-neutral-800/90 rounded-2xl p-4 sm:p-5 space-y-4 relative shadow-sm hover:border-neutral-700 transition-all"
+                          id={isFirstOfFile ? `invoice-card-${inv.fileId}` : `invoice-card-item-${inv.id}`}
+                          data-file-id={inv.fileId}
+                          onClick={() => {
+                            if (activeFileId !== inv.fileId) {
+                              setActiveFileId(inv.fileId);
+                            }
+                          }}
+                          onFocusCapture={() => {
+                            if (activeFileId !== inv.fileId) {
+                              setActiveFileId(inv.fileId);
+                            }
+                          }}
+                          className={`rounded-2xl p-4 sm:p-5 space-y-4 relative shadow-sm transition-all duration-200 cursor-pointer ${
+                            isCardActive
+                              ? 'bg-neutral-900/90 border border-purple-500/80 ring-2 ring-purple-500/30 shadow-lg shadow-purple-950/40'
+                              : 'bg-neutral-950/80 border border-neutral-800/90 hover:border-neutral-700'
+                          }`}
                         >
                           {/* Invoice Item Header */}
-                          <div className="flex items-center justify-between pb-3 border-b border-neutral-800/80">
-                            <div className="flex items-center gap-2 overflow-hidden">
+                          <div className="flex items-center justify-between pb-3 border-b border-neutral-800/80 gap-2 flex-wrap sm:flex-nowrap">
+                            <div className="flex items-center gap-2 overflow-hidden flex-wrap sm:flex-nowrap">
                               <span
                                 className={`w-6 h-6 rounded-lg border flex items-center justify-center text-xs font-black shrink-0 ${
                                   inv.type === 'Invoice'
@@ -1234,11 +1377,23 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                                   ? `Invoice ${inv.invoiceNumber}`
                                   : `Invoice Entry #${index + 1}`}
                               </span>
+
+                              {/* Linked Attachment Indicator */}
                               {sourceFile && (
-                                <span className="text-[10px] font-mono text-purple-300 bg-purple-950/60 border border-purple-800/40 px-2 py-0.5 rounded-md truncate max-w-[130px]">
-                                  {sourceFile.file.name}
+                                <span
+                                  className={`text-[10px] font-mono px-2 py-0.5 rounded-md truncate max-w-[140px] flex items-center gap-1 border transition-all ${
+                                    isCardActive
+                                      ? 'bg-purple-900/60 text-purple-200 border-purple-600/60 font-bold'
+                                      : 'bg-neutral-900 text-neutral-400 border-neutral-800'
+                                  }`}
+                                  title={`Attachment #${fileIdx + 1}: ${sourceFile.file.name}`}
+                                >
+                                  <span>Att. #{fileIdx + 1}</span>
+                                  <span className="opacity-60">•</span>
+                                  <span className="truncate">{sourceFile.file.name}</span>
                                 </span>
                               )}
+
                               {inv.pageNumber && (
                                 <span className="text-[10px] font-mono text-neutral-400 bg-neutral-900 border border-neutral-800 px-2 py-0.5 rounded-md shrink-0">
                                   p.{inv.pageNumber}
@@ -1246,25 +1401,53 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                               )}
                             </div>
 
-                            <div className="flex items-center gap-1.5 shrink-0">
+                            <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                              {/* Preview Active Status / Quick Switcher */}
+                              {isCardActive ? (
+                                <span className="text-[10px] font-bold bg-purple-600 text-white px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm shadow-purple-900/40">
+                                  <Icons.Eye className="w-3 h-3" />
+                                  <span className="hidden sm:inline">In Preview</span>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveFileId(inv.fileId);
+                                    setMobileTab('preview');
+                                  }}
+                                  className="text-[10px] font-semibold text-neutral-400 hover:text-purple-300 bg-neutral-900 hover:bg-purple-950/60 px-2 py-1 rounded-lg border border-neutral-800 hover:border-purple-800/50 transition-all flex items-center gap-1 cursor-pointer"
+                                  title="Switch preview to this attachment"
+                                >
+                                  <Icons.Eye className="w-3 h-3 text-neutral-500" />
+                                  <span className="hidden sm:inline">View Att. #{fileIdx + 1}</span>
+                                </button>
+                              )}
+
                               <button
                                 type="button"
-                                onClick={() => handleDuplicateInvoice(inv.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDuplicateInvoice(inv.id);
+                                }}
                                 className="text-[11px] text-purple-300 hover:text-white bg-purple-950/50 hover:bg-purple-900/60 px-2 py-1 rounded-lg border border-purple-800/40 transition-all flex items-center gap-1 cursor-pointer"
                                 title="Duplicate this invoice specification"
                               >
                                 <Icons.Plus className="w-3 h-3" />
-                                <span>Copy</span>
+                                <span className="hidden sm:inline">Copy</span>
                               </button>
                               {invoices.length > 1 && (
                                 <button
                                   type="button"
-                                  onClick={() => handleRemoveInvoice(inv.id)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveInvoice(inv.id);
+                                  }}
                                   className="text-[11px] text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 px-2 py-1 rounded-lg border border-transparent hover:border-rose-800/50 transition-all flex items-center gap-1 cursor-pointer"
                                   title="Remove this invoice"
                                 >
                                   <Icons.Trash className="w-3 h-3" />
-                                  <span>Remove</span>
+                                  <span className="hidden sm:inline">Remove</span>
                                 </button>
                               )}
                             </div>
