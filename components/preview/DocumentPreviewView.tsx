@@ -221,26 +221,6 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
 
         {/* Right Header Actions */}
         <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
-          {/* Header Quick Mobile Toggle */}
-          <button
-            type="button"
-            onClick={() => setMobileTab((prev) => (prev === 'viewer' ? 'details' : 'viewer'))}
-            className="lg:hidden inline-flex items-center gap-1 text-xs font-bold bg-neutral-800 hover:bg-neutral-700 text-purple-300 hover:text-white px-2.5 py-1.5 rounded-xl border border-purple-800/50 shadow-sm transition-all cursor-pointer active:scale-95"
-            title={mobileTab === 'viewer' ? 'Switch to Document Details' : 'Switch to Document Viewer'}
-          >
-            {mobileTab === 'viewer' ? (
-              <>
-                <Icons.FileText className="w-3.5 h-3.5 text-purple-400" />
-                <span>Details</span>
-              </>
-            ) : (
-              <>
-                <Icons.Eye className="w-3.5 h-3.5 text-purple-400" />
-                <span>Doc View</span>
-              </>
-            )}
-          </button>
-
           {saveSuccess && (
             <span className="hidden md:inline-flex items-center gap-1 text-xs font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800 px-2.5 py-1 rounded-lg animate-pulse">
               <Icons.Check className="w-3.5 h-3.5" /> Saved
@@ -521,37 +501,6 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
             </div>
           )}
 
-          {/* Mobile Floating Quick Bar in Viewer Mode */}
-          <div className="lg:hidden absolute bottom-3 left-3 right-3 bg-neutral-900/95 backdrop-blur-xl border border-neutral-800 p-2.5 rounded-2xl shadow-2xl flex items-center justify-between z-20">
-            <div className="min-w-0 pr-2">
-              <div className="text-[10px] uppercase font-bold text-neutral-400 truncate">
-                {activeDocument.vendorName}
-              </div>
-              <div className="text-sm font-black font-mono text-emerald-400">
-                {formatCurrency(activeDocument.amount)}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {canVerifyThisDoc && (
-                <button
-                  type="button"
-                  onClick={() => onVerify(activeDocument.id)}
-                  className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
-                >
-                  <Icons.Check className="w-3.5 h-3.5 stroke-[3]" />
-                  <span>Verify</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setMobileTab('details')}
-                className="inline-flex items-center gap-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
-              >
-                <Icons.FileText className="w-3.5 h-3.5" />
-                <span>Details & Edit</span>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Right Column: Streamlined Sidebar */}
@@ -562,17 +511,6 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
               : 'hidden lg:flex'
           }`}
         >
-          {/* Mobile Back to Document Viewer Quick Action Button */}
-          <div className="lg:hidden pb-3 mb-3 border-b border-neutral-800">
-            <button
-              type="button"
-              onClick={() => setMobileTab('viewer')}
-              className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-purple-300 hover:text-white text-xs font-bold border border-neutral-700 transition-all cursor-pointer shadow-sm active:scale-95"
-            >
-              <Icons.Eye className="w-4 h-4 text-purple-400" />
-              <span>← Switch to Document Viewer</span>
-            </button>
-          </div>
           {isEditing ? (
             /* Inline Edit Form */
             <form onSubmit={handleSaveSidebar} className="space-y-4">
@@ -821,16 +759,6 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
 
               {/* Bottom Actions */}
               <div className="pt-4 border-t border-neutral-800 space-y-2 mt-4">
-                {/* Mobile Switch to Viewer Button */}
-                <button
-                  type="button"
-                  onClick={() => setMobileTab('viewer')}
-                  className="lg:hidden w-full bg-purple-950/60 hover:bg-purple-900/80 text-purple-300 font-semibold text-xs py-2.5 rounded-xl border border-purple-800/60 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
-                >
-                  <Icons.Eye className="w-4 h-4 text-purple-400" />
-                  <span>View Document Scan</span>
-                </button>
-
                 {canModify && (
                   <button
                     onClick={() => onDelete(activeDocument)}
