@@ -38,6 +38,8 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
 
   // Sidebar Inline Edit State
   const [isEditing, setIsEditing] = useState(initialEditMode);
+  const [mobileTab, setMobileTab] = useState<'viewer' | 'details'>(initialEditMode ? 'details' : 'viewer');
+  const [imageZoom, setImageZoom] = useState<number>(1);
   const [vendorName, setVendorName] = useState(activeDocument.vendorName);
   const [invoiceNumber, setInvoiceNumber] = useState(activeDocument.invoiceNumber);
   const [date, setDate] = useState(activeDocument.date);
@@ -61,6 +63,7 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
   useEffect(() => {
     if (initialEditMode) {
       setIsEditing(true);
+      setMobileTab('details');
     }
   }, [initialEditMode]);
 
@@ -183,25 +186,25 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
   return (
     <div className="min-h-screen lg:h-screen bg-neutral-950 text-white flex flex-col font-sans overflow-y-auto lg:overflow-hidden">
       {/* 1. Clean Top Header */}
-      <header className="h-16 flex-shrink-0 bg-neutral-900 border-b border-neutral-800 px-4 sm:px-6 flex items-center justify-between z-20">
-        <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
+      <header className="h-16 flex-shrink-0 bg-neutral-900 border-b border-neutral-800 px-3 sm:px-6 flex items-center justify-between z-20">
+        <div className="flex items-center space-x-2 sm:space-x-4 min-w-0">
           <button
             onClick={onBack}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-300 hover:text-white bg-neutral-800 hover:bg-neutral-700 px-3 py-2 rounded-xl transition-all border border-neutral-700 active:scale-95"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-300 hover:text-white bg-neutral-800 hover:bg-neutral-700 px-2.5 sm:px-3 py-2 rounded-xl transition-all border border-neutral-700 active:scale-95 shrink-0"
           >
             <Icons.ArrowLeft className="w-4 h-4" />
             <span className="hidden sm:inline">Back</span>
           </button>
 
-          <div className="h-4 w-[1px] bg-neutral-800 hidden sm:block" />
+          <div className="h-4 w-[1px] bg-neutral-800 hidden sm:block shrink-0" />
 
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-neutral-400 truncate">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="text-xs font-mono font-bold text-neutral-400 truncate max-w-[120px] sm:max-w-none">
                 {activeDocument.invoiceNumber}
               </span>
               <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
                   activeDocument.status === 'verified'
                     ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
                     : 'bg-amber-950 text-amber-300 border-amber-800'
@@ -210,14 +213,34 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
                 {activeDocument.status === 'verified' ? 'Verified' : 'Pending'}
               </span>
             </div>
-            <h1 className="text-sm font-bold text-white truncate max-w-xs sm:max-w-md">
+            <h1 className="text-xs sm:text-sm font-bold text-white truncate max-w-[150px] sm:max-w-md">
               {activeDocument.vendorName}
             </h1>
           </div>
         </div>
 
         {/* Right Header Actions */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+          {/* Header Quick Mobile Toggle */}
+          <button
+            type="button"
+            onClick={() => setMobileTab((prev) => (prev === 'viewer' ? 'details' : 'viewer'))}
+            className="lg:hidden inline-flex items-center gap-1 text-xs font-bold bg-neutral-800 hover:bg-neutral-700 text-purple-300 hover:text-white px-2.5 py-1.5 rounded-xl border border-purple-800/50 shadow-sm transition-all cursor-pointer active:scale-95"
+            title={mobileTab === 'viewer' ? 'Switch to Document Details' : 'Switch to Document Viewer'}
+          >
+            {mobileTab === 'viewer' ? (
+              <>
+                <Icons.FileText className="w-3.5 h-3.5 text-purple-400" />
+                <span>Details</span>
+              </>
+            ) : (
+              <>
+                <Icons.Eye className="w-3.5 h-3.5 text-purple-400" />
+                <span>Doc View</span>
+              </>
+            )}
+          </button>
+
           {saveSuccess && (
             <span className="hidden md:inline-flex items-center gap-1 text-xs font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800 px-2.5 py-1 rounded-lg animate-pulse">
               <Icons.Check className="w-3.5 h-3.5" /> Saved
@@ -229,7 +252,7 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
               href={activeDocument.fileUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-semibold px-3 py-2 rounded-xl border border-neutral-700 transition-all active:scale-95"
+              className="inline-flex items-center gap-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-semibold px-2.5 sm:px-3 py-2 rounded-xl border border-neutral-700 transition-all active:scale-95"
               title="Open raw file in a new browser tab"
             >
               <Icons.ExternalLink className="w-3.5 h-3.5" />
@@ -241,7 +264,7 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
             <a
               href={fileSource}
               download={activeDocument.fileName || `${activeDocument.invoiceNumber}.pdf`}
-              className="inline-flex items-center gap-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-semibold px-3 py-2 rounded-xl border border-neutral-700 transition-all active:scale-95"
+              className="inline-flex items-center gap-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-semibold px-2.5 sm:px-3 py-2 rounded-xl border border-neutral-700 transition-all active:scale-95"
               title="Download original document"
             >
               <Icons.Download className="w-3.5 h-3.5" />
@@ -252,35 +275,83 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
           {canVerifyThisDoc && (
             <button
               onClick={() => onVerify(activeDocument.id)}
-              className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all shadow-md shadow-emerald-950/40 active:scale-95"
+              className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 sm:px-3.5 py-2 rounded-xl transition-all shadow-md shadow-emerald-950/40 active:scale-95 cursor-pointer"
             >
               <Icons.Check className="w-3.5 h-3.5 stroke-[3]" />
-              <span>Verify</span>
+              <span className="hidden sm:inline">Verify</span>
             </button>
           )}
         </div>
       </header>
 
-      {/* 2. Simplified Split Body */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-visible lg:overflow-hidden">
+      {/* Dedicated Mobile Segmented Switcher Bar */}
+      <div className="lg:hidden w-full bg-neutral-900/95 border-b border-neutral-800 px-3 py-2 flex items-center gap-2 shrink-0 z-10 backdrop-blur-md">
+        <div className="w-full bg-neutral-950 p-1 rounded-2xl border border-neutral-800 grid grid-cols-2 gap-1 shadow-inner">
+          <button
+            type="button"
+            onClick={() => setMobileTab('viewer')}
+            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              mobileTab === 'viewer'
+                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30 ring-1 ring-purple-400/40'
+                : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900/60'
+            }`}
+          >
+            <Icons.Eye className="w-4 h-4" />
+            <span>Document Viewer</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab('details')}
+            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              mobileTab === 'details'
+                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30 ring-1 ring-purple-400/40'
+                : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900/60'
+            }`}
+          >
+            <Icons.FileText className="w-4 h-4" />
+            <span>Details & Edit</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Responsive Split Body */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
         {/* Left / Center: Clean Document Viewer */}
-        <div className="w-full lg:flex-1 bg-neutral-950 p-3 sm:p-6 overflow-visible lg:overflow-hidden flex flex-col justify-center items-center relative min-h-[440px] sm:min-h-[580px] lg:min-h-0">
+        <div
+          className={`w-full lg:flex-1 bg-neutral-950 p-2 sm:p-4 lg:p-6 overflow-hidden flex flex-col justify-center items-center relative ${
+            mobileTab === 'viewer'
+              ? 'flex flex-1 min-h-[calc(100vh-130px)] lg:min-h-0'
+              : 'hidden lg:flex'
+          }`}
+        >
           {fileSource ? (
             isPdf ? (
               <div className="w-full h-full flex flex-col rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 shadow-2xl">
                 {/* Minimal subheader */}
-                <div className="bg-neutral-900 border-b border-neutral-800 px-4 py-2 flex items-center justify-between text-xs text-neutral-400">
+                <div className="bg-neutral-900 border-b border-neutral-800 px-3 sm:px-4 py-2 flex items-center justify-between text-xs text-neutral-400 shrink-0">
                   <div className="flex items-center gap-2 truncate">
                     <Icons.File className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
                     <span className="font-mono text-white truncate text-xs">
                       {activeDocument.fileName || 'document.pdf'}
                     </span>
                   </div>
-                  {activeDocument.fileSize && (
-                    <span className="text-[11px] font-mono bg-neutral-800 px-2 py-0.5 rounded text-neutral-300">
-                      {formatFileSize(activeDocument.fileSize)}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {activeDocument.fileSize && (
+                      <span className="text-[11px] font-mono bg-neutral-800 px-2 py-0.5 rounded text-neutral-300 hidden sm:inline-block">
+                        {formatFileSize(activeDocument.fileSize)}
+                      </span>
+                    )}
+                    <a
+                      href={fileSource}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-neutral-300 hover:text-white bg-neutral-800 hover:bg-neutral-700 px-2.5 py-1 rounded-lg border border-neutral-700 transition-colors"
+                      title="Open full size in new tab"
+                    >
+                      <Icons.ExternalLink className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Popout</span>
+                    </a>
+                  </div>
                 </div>
 
                 {iframeError ? (
@@ -309,12 +380,62 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
                 )}
               </div>
             ) : isImage ? (
-              <div className="w-full h-full flex items-center justify-center p-4 bg-neutral-900/50 rounded-2xl border border-neutral-800 overflow-auto">
-                <img
-                  src={fileSource}
-                  alt={activeDocument.fileName || 'Document Preview'}
-                  className="max-h-full max-w-full object-contain rounded-xl shadow-2xl border border-neutral-800"
-                />
+              <div className="w-full h-full flex flex-col rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 shadow-2xl relative">
+                {/* Image toolbar with Zoom Controls */}
+                <div className="bg-neutral-900 border-b border-neutral-800 px-3 sm:px-4 py-2 flex items-center justify-between text-xs text-neutral-400 shrink-0 gap-2">
+                  <div className="flex items-center gap-2 truncate">
+                    <Icons.File className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                    <span className="font-mono text-white truncate text-xs">
+                      {activeDocument.fileName || 'document.png'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setImageZoom((prev) => Math.max(0.75, Number((prev - 0.25).toFixed(2))))}
+                      className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                      title="Zoom Out"
+                    >
+                      <Icons.Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImageZoom(1)}
+                      className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-[10px] font-mono font-bold text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                      title="Reset Zoom"
+                    >
+                      {Math.round(imageZoom * 100)}%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImageZoom((prev) => Math.min(3, Number((prev + 0.25).toFixed(2))))}
+                      className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                      title="Zoom In"
+                    >
+                      <Icons.Plus className="w-3.5 h-3.5" />
+                    </button>
+                    <a
+                      href={fileSource}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors"
+                      title="Open full size in new tab"
+                    >
+                      <Icons.ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* Scrollable image container */}
+                <div className="flex-1 w-full overflow-auto custom-scrollbar p-3 sm:p-6 flex items-center justify-center bg-neutral-950/80">
+                  <img
+                    src={fileSource}
+                    alt={activeDocument.fileName || 'Document Preview'}
+                    style={{ transform: `scale(${imageZoom})`, transition: 'transform 0.15s ease-out' }}
+                    className="max-h-full max-w-full object-contain rounded-xl shadow-2xl border border-neutral-800 origin-center"
+                  />
+                </div>
               </div>
             ) : (
               <div className="w-full max-w-md p-8 bg-neutral-900 rounded-2xl border border-neutral-800 text-center space-y-4">
@@ -399,10 +520,59 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
               </div>
             </div>
           )}
+
+          {/* Mobile Floating Quick Bar in Viewer Mode */}
+          <div className="lg:hidden absolute bottom-3 left-3 right-3 bg-neutral-900/95 backdrop-blur-xl border border-neutral-800 p-2.5 rounded-2xl shadow-2xl flex items-center justify-between z-20">
+            <div className="min-w-0 pr-2">
+              <div className="text-[10px] uppercase font-bold text-neutral-400 truncate">
+                {activeDocument.vendorName}
+              </div>
+              <div className="text-sm font-black font-mono text-emerald-400">
+                {formatCurrency(activeDocument.amount)}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {canVerifyThisDoc && (
+                <button
+                  type="button"
+                  onClick={() => onVerify(activeDocument.id)}
+                  className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+                >
+                  <Icons.Check className="w-3.5 h-3.5 stroke-[3]" />
+                  <span>Verify</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setMobileTab('details')}
+                className="inline-flex items-center gap-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+              >
+                <Icons.FileText className="w-3.5 h-3.5" />
+                <span>Details & Edit</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Right Column: Streamlined Sidebar */}
-        <aside className="w-full lg:w-96 bg-neutral-900 border-t lg:border-t-0 lg:border-l border-neutral-800 p-4 sm:p-6 flex flex-col justify-between overflow-visible lg:overflow-y-auto flex-shrink-0">
+        <aside
+          className={`w-full lg:w-96 bg-neutral-900 border-t lg:border-t-0 lg:border-l border-neutral-800 p-4 sm:p-6 flex flex-col justify-between overflow-y-auto flex-shrink-0 ${
+            mobileTab === 'details'
+              ? 'flex flex-1 min-h-[calc(100vh-130px)] lg:min-h-0'
+              : 'hidden lg:flex'
+          }`}
+        >
+          {/* Mobile Back to Document Viewer Quick Action Button */}
+          <div className="lg:hidden pb-3 mb-3 border-b border-neutral-800">
+            <button
+              type="button"
+              onClick={() => setMobileTab('viewer')}
+              className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-purple-300 hover:text-white text-xs font-bold border border-neutral-700 transition-all cursor-pointer shadow-sm active:scale-95"
+            >
+              <Icons.Eye className="w-4 h-4 text-purple-400" />
+              <span>← Switch to Document Viewer</span>
+            </button>
+          </div>
           {isEditing ? (
             /* Inline Edit Form */
             <form onSubmit={handleSaveSidebar} className="space-y-4">
@@ -651,10 +821,20 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
 
               {/* Bottom Actions */}
               <div className="pt-4 border-t border-neutral-800 space-y-2 mt-4">
+                {/* Mobile Switch to Viewer Button */}
+                <button
+                  type="button"
+                  onClick={() => setMobileTab('viewer')}
+                  className="lg:hidden w-full bg-purple-950/60 hover:bg-purple-900/80 text-purple-300 font-semibold text-xs py-2.5 rounded-xl border border-purple-800/60 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <Icons.Eye className="w-4 h-4 text-purple-400" />
+                  <span>View Document Scan</span>
+                </button>
+
                 {canModify && (
                   <button
                     onClick={() => onDelete(activeDocument)}
-                    className="w-full bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 font-semibold text-xs py-2 rounded-xl border border-rose-800/50 transition-all flex items-center justify-center gap-1.5"
+                    className="w-full bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 font-semibold text-xs py-2 rounded-xl border border-rose-800/50 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Icons.Trash className="w-3.5 h-3.5" />
                     Delete Document
@@ -662,7 +842,7 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
                 )}
                 <button
                   onClick={onBack}
-                  className="w-full bg-neutral-800 hover:bg-neutral-700 text-white font-semibold text-xs py-2.5 rounded-xl transition-all"
+                  className="w-full bg-neutral-800 hover:bg-neutral-700 text-white font-semibold text-xs py-2.5 rounded-xl transition-all cursor-pointer"
                 >
                   Close Preview
                 </button>
