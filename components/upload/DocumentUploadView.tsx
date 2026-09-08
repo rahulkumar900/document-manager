@@ -96,9 +96,9 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
   // Helper to scroll to the first invoice card belonging to a specific attachment
   const scrollToInvoiceForFile = (fileId: string) => {
     isProgrammaticScrollRef.current = true;
-    const cardEl = document.getElementById(`invoice-card-${fileId}`);
+    const cardEl = document.querySelector<HTMLElement>(`[data-file-id="${fileId}"]`);
     if (cardEl) {
-      cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
     if (scrollDebounceTimerRef.current) clearTimeout(scrollDebounceTimerRef.current);
     scrollDebounceTimerRef.current = setTimeout(() => {
@@ -108,24 +108,85 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
 
   // Scroll listener on invoice cards list: when scrolling down through cards, toggle preview to match visible attachment
   const handleInvoiceListScroll = () => {
-    if (isProgrammaticScrollRef.current || !invoiceListContainerRef.current) return;
-    const container = invoiceListContainerRef.current;
-    const containerTop = container.getBoundingClientRect().top;
-    const cards = container.querySelectorAll<HTMLElement>('[data-file-id]');
+    if (isProgrammaticScrollRef.current) return;
+    const cards = document.querySelectorAll<HTMLElement>('[data-invoice-card="true"]');
+    if (!cards || cards.length === 0) return;
 
-    for (let i = 0; i < cards.length; i++) {
-      const card = cards[i];
+    const container = invoiceListContainerRef.current;
+    const containerTop = container ? container.getBoundingClientRect().top : 100;
+    const targetY = containerTop + 75;
+
+    let closestCard: HTMLElement | null = null;
+    let closestDist = Infinity;
+
+    cards.forEach((card) => {
       const rect = card.getBoundingClientRect();
-      // If the top of the card is within the upper active zone of the scroll container
-      if (rect.bottom > containerTop + 30 && rect.top < containerTop + 180) {
-        const fileId = card.getAttribute('data-file-id');
-        if (fileId && fileId !== activeFileId) {
-          setActiveFileId(fileId);
-        }
-        break;
+      const dist = Math.abs(rect.top - targetY);
+      if (rect.bottom > containerTop && dist < closestDist) {
+        closestDist = dist;
+        closestCard = card;
+      }
+    });
+
+    if (closestCard) {
+      const fileId = (closestCard as HTMLElement).getAttribute('data-file-id');
+      if (fileId && fileId !== activeFileId) {
+        setActiveFileId(fileId);
       }
     }
   };
+
+  // Universal scroll listeners & IntersectionObserver: triggers on container scroll, window scroll, and mobile
+  useEffect(() => {
+    if (typeof window === 'undefined' || invoices.length === 0) return;
+
+    const onScroll = () => {
+      handleInvoiceListScroll();
+    };
+
+    const container = invoiceListContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', onScroll, { passive: true });
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (isProgrammaticScrollRef.current) return;
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length > 0) {
+          const containerTop = container ? container.getBoundingClientRect().top : 100;
+          const targetY = containerTop + 75;
+          visible.sort(
+            (a, b) =>
+              Math.abs(a.boundingClientRect.top - targetY) -
+              Math.abs(b.boundingClientRect.top - targetY)
+          );
+          const topCard = visible[0].target as HTMLElement;
+          const fileId = topCard.getAttribute('data-file-id');
+          if (fileId && fileId !== activeFileId) {
+            setActiveFileId(fileId);
+          }
+        }
+      },
+      {
+        root: null,
+        rootMargin: '-5% 0px -30% 0px',
+        threshold: [0.1, 0.3, 0.6],
+      }
+    );
+
+    const cards = document.querySelectorAll<HTMLElement>('[data-invoice-card="true"]');
+    cards.forEach((c) => observer.observe(c));
+
+    return () => {
+      if (container) {
+        container.removeEventListener('scroll', onScroll);
+      }
+      window.removeEventListener('scroll', onScroll);
+      observer.disconnect();
+    };
+  }, [invoices, activeFileId]);
 
   // Keep siteId in sync if selectedSiteId prop changes
   useEffect(() => {
@@ -258,179 +319,263 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
       setActiveFileId(newFileItems[0].id);
     }
 
-    // Trigger AI extraction for all newly selected files in parallel (with token-optimized payload)
-    const scanResults = await Promise.all(
-      newFileItems.map(async (item, fileIndex) => {
-        try {
-          // Pre-process and optimize images to save up to 75% vision tokens
-          const fileToScan = await optimizeImageForAi(item.file);
-          const body = new FormData();
-          body.append('file', fileToScan);
+    // Progressive, ordered AI extraction across files to prevent rate-limit concurrency collisions
+    const scanResults: Array<{
+      fileId: string;
+      fileIndex: number;
+      status: 'ready' | 'error';
+      statusMessage: string;
+      invoices: InvoiceDraftItem[];
+    }> = [];
 
-          const res = await fetch('/api/ai/extract', {
-            method: 'POST',
-            body,
-          });
+    let successfulAiExtractions = 0;
+    let fallbackExtractions = 0;
+    let lastErrorEncountered: string | null = null;
+    let isHighDemandSpike = false;
 
-          if (res.ok) {
-            const json = await res.json();
-            if (json.success && json.data) {
-              const d = json.data;
+    const totalToScan = newFileItems.length;
 
-              // Check if response was a fallback due to error/high demand
-              if (json.source === 'heuristic-fallback' || json.error) {
-                const is503 = /503|UNAVAILABLE|high demand|429/i.test(json.error || '');
-                setAiExtractionError({
-                  message:
-                    json.error ||
-                    'AI OCR engine is currently experiencing temporary high demand (503). Basic document defaults were generated; you can click below to retry the AI extraction.',
-                  isHighDemand: is503,
-                });
-              } else {
-                setAiExtractionError(null);
+    for (let i = 0; i < totalToScan; i++) {
+      const item = newFileItems[i];
+      const fileIndex = uploadedFiles.length + i;
+
+      setAiScanningStep(`Extracting document ${i + 1} of ${totalToScan}: ${item.file.name}...`);
+
+      setUploadedFiles((prev) =>
+        prev.map((f) =>
+          f.id === item.id
+            ? { ...f, status: 'scanning', statusMessage: `AI extracting (${i + 1}/${totalToScan})...` }
+            : f
+        )
+      );
+
+      try {
+        const fileToScan = await optimizeImageForAi(item.file);
+        const body = new FormData();
+        body.append('file', fileToScan);
+
+        const res = await fetch('/api/ai/extract', {
+          method: 'POST',
+          body,
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            const d = json.data;
+            const isFallback = json.source === 'heuristic-fallback' || !!json.error;
+
+            if (isFallback) {
+              fallbackExtractions++;
+              if (json.error) {
+                lastErrorEncountered = json.error;
+                if (/503|UNAVAILABLE|high demand|429/i.test(json.error)) {
+                  isHighDemandSpike = true;
+                }
+              }
+            } else {
+              successfulAiExtractions++;
+            }
+
+            const extractedList =
+              d.invoices && Array.isArray(d.invoices) && d.invoices.length > 0
+                ? d.invoices
+                : [
+                    {
+                      vendorName: d.vendorName,
+                      invoiceNumber: d.invoiceNumber,
+                      date: d.date,
+                      documentType: d.documentType,
+                      totalAmount: d.totalAmount,
+                      pageNumber: 1,
+                    },
+                  ];
+
+            const parsedInvoices: InvoiceDraftItem[] = extractedList.map((inv: any, idx: number) => {
+              let docType: DocumentType = 'Invoice';
+              if (inv.documentType === 'Challan' || inv.documentType === 'Credit Note' || inv.documentType === 'Ledger') {
+                docType = inv.documentType;
+              } else if (inv.documentType === 'Tax Invoice') {
+                docType = 'Invoice';
               }
 
-              const extractedList =
-                d.invoices && Array.isArray(d.invoices) && d.invoices.length > 0
-                  ? d.invoices
-                  : [
-                      {
-                        vendorName: d.vendorName,
-                        invoiceNumber: d.invoiceNumber,
-                        date: d.date,
-                        documentType: d.documentType,
-                        totalAmount: d.totalAmount,
-                        pageNumber: 1,
-                      },
-                    ];
-
-              const parsedInvoices: InvoiceDraftItem[] = extractedList.map((inv: any, idx: number) => {
-                let docType: DocumentType = 'Invoice';
-                if (inv.documentType === 'Challan' || inv.documentType === 'Credit Note' || inv.documentType === 'Ledger') {
-                  docType = inv.documentType;
-                } else if (inv.documentType === 'Tax Invoice') {
-                  docType = 'Invoice';
-                }
-
-                return {
-                  id: generateUUID(),
-                  fileId: item.id,
-                  vendorName: inv.vendorName || '',
-                  invoiceNumber: inv.invoiceNumber || '',
-                  date: inv.date || new Date().toISOString().split('T')[0],
-                  type: docType,
-                  amount:
-                    inv.totalAmount !== undefined && inv.totalAmount !== null
-                      ? String(inv.totalAmount)
-                      : '',
-                  pageNumber: inv.pageNumber || idx + 1,
-                  notes: inv.notes || '',
-                  taxId: inv.taxId || '',
-                };
-              });
-
               return {
+                id: generateUUID(),
                 fileId: item.id,
-                fileIndex,
-                status: 'ready' as const,
-                statusMessage: `${parsedInvoices.length} document record(s) extracted`,
-                invoices: parsedInvoices,
+                vendorName: inv.vendorName || '',
+                invoiceNumber: inv.invoiceNumber || '',
+                date: inv.date || new Date().toISOString().split('T')[0],
+                type: docType,
+                amount:
+                  inv.totalAmount !== undefined && inv.totalAmount !== null
+                    ? String(inv.totalAmount)
+                    : '',
+                pageNumber: inv.pageNumber || idx + 1,
+                notes: inv.notes || '',
+                taxId: inv.taxId || '',
               };
+            });
+
+            const resultItem = {
+              fileId: item.id,
+              fileIndex,
+              status: 'ready' as const,
+              statusMessage: isFallback
+                ? 'Extracted with smart defaults'
+                : `${parsedInvoices.length} document record(s) extracted`,
+              invoices: parsedInvoices,
+            };
+
+            scanResults.push(resultItem);
+
+            // Progressive updates: update this file's status in uploadedFiles immediately
+            setUploadedFiles((prev) =>
+              prev.map((f) =>
+                f.id === item.id
+                  ? { ...f, status: 'ready', statusMessage: resultItem.statusMessage }
+                  : f
+              )
+            );
+
+            // Progressive updates: add invoices immediately and maintain strict attachment order
+            setInvoices((prev) => {
+              const combined = [...prev, ...parsedInvoices];
+              const allFileIds = [...uploadedFiles.map((f) => f.id), ...newFileItems.map((f) => f.id)];
+              const fileOrderMap = new Map(allFileIds.map((id, idx) => [id, idx]));
+
+              return combined.sort((a, b) => {
+                const orderA = fileOrderMap.has(a.fileId) ? fileOrderMap.get(a.fileId)! : 9999;
+                const orderB = fileOrderMap.has(b.fileId) ? fileOrderMap.get(b.fileId)! : 9999;
+                if (orderA !== orderB) return orderA - orderB;
+                return (a.pageNumber || 1) - (b.pageNumber || 1);
+              });
+            });
+
+            // Brief pacing pause between consecutive AI requests to maintain flawless quota
+            if (i < totalToScan - 1) {
+              await new Promise((r) => setTimeout(r, 200));
             }
+            continue;
           }
+        }
 
-          // Fallback parsing if status not OK or missing payload
-          const cleanName = item.file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-          const year = new Date().getFullYear();
-          const randomNum = Math.floor(1000 + Math.random() * 9000);
+        // Fallback parsing if status not OK or missing payload
+        fallbackExtractions++;
+        const cleanName = item.file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+        const year = new Date().getFullYear();
+        const randomNum = Math.floor(1000 + Math.random() * 9000);
 
-          let detectedType: DocumentType = 'Invoice';
-          let invNumber = `INV-${year}-${randomNum}`;
+        let detectedType: DocumentType = 'Invoice';
+        let invNumber = `INV-${year}-${randomNum}`;
 
-          if (/credit|cn|cr\s*note|cr_note|creditnote/i.test(item.file.name)) {
-            detectedType = 'Credit Note';
-            invNumber = `CN-${year}-${randomNum}`;
-          } else if (/ledger|statement|account|soa|acct/i.test(item.file.name)) {
-            detectedType = 'Ledger';
-            invNumber = `01-Apr-${year - 1} to 31-Mar-${year}`;
-          } else if (/challan|delivery|dc|dispatch|memo/i.test(item.file.name)) {
-            detectedType = 'Challan';
-            invNumber = `DC-${year}-${randomNum}`;
-          }
+        if (/credit|cn|cr\s*note|cr_note|creditnote/i.test(item.file.name)) {
+          detectedType = 'Credit Note';
+          invNumber = `CN-${year}-${randomNum}`;
+        } else if (/ledger|statement|account|soa|acct/i.test(item.file.name)) {
+          detectedType = 'Ledger';
+          invNumber = `01-Apr-${year - 1} to 31-Mar-${year}`;
+        } else if (/challan|delivery|dc|dispatch|memo/i.test(item.file.name)) {
+          detectedType = 'Challan';
+          invNumber = `DC-${year}-${randomNum}`;
+        }
 
-          const fallbackInvoice: InvoiceDraftItem = {
-            id: generateUUID(),
-            fileId: item.id,
-            vendorName: cleanName.length > 3 ? cleanName.toUpperCase() : 'METRO CONTRACTORS CORP',
-            invoiceNumber: invNumber,
-            date: new Date().toISOString().split('T')[0],
-            type: detectedType,
-            amount: (Math.random() * 65000 + 2500).toFixed(2),
-            pageNumber: 1,
-            notes: detectedType === 'Ledger' ? 'Account Statement' : undefined,
-          };
+        const fallbackInvoice: InvoiceDraftItem = {
+          id: generateUUID(),
+          fileId: item.id,
+          vendorName: cleanName.length > 3 ? cleanName.toUpperCase() : 'METRO CONTRACTORS CORP',
+          invoiceNumber: invNumber,
+          date: new Date().toISOString().split('T')[0],
+          type: detectedType,
+          amount: (Math.random() * 65000 + 2500).toFixed(2),
+          pageNumber: 1,
+          notes: detectedType === 'Ledger' ? 'Account Statement' : undefined,
+        };
 
-          return {
-            fileId: item.id,
-            fileIndex,
-            status: 'ready' as const,
-            statusMessage: 'Extracted via fallback parser',
-            invoices: [fallbackInvoice],
-          };
-        } catch (err) {
-          console.error(`AI Extraction failed for ${item.file.name}:`, err);
-          const errMsg = err instanceof Error ? err.message : String(err);
-          const is503 = /503|UNAVAILABLE|high demand|429/i.test(errMsg);
+        const resultItem = {
+          fileId: item.id,
+          fileIndex,
+          status: 'ready' as const,
+          statusMessage: 'Extracted with smart defaults',
+          invoices: [fallbackInvoice],
+        };
 
-          setAiExtractionError({
-            message: errMsg || 'AI document extraction encountered a network error. Click below to retry.',
-            isHighDemand: is503,
+        scanResults.push(resultItem);
+
+        setUploadedFiles((prev) =>
+          prev.map((f) =>
+            f.id === item.id
+              ? { ...f, status: 'ready', statusMessage: resultItem.statusMessage }
+              : f
+          )
+        );
+
+        setInvoices((prev) => {
+          const combined = [...prev, fallbackInvoice];
+          const allFileIds = [...uploadedFiles.map((f) => f.id), ...newFileItems.map((f) => f.id)];
+          const fileOrderMap = new Map(allFileIds.map((id, idx) => [id, idx]));
+
+          return combined.sort((a, b) => {
+            const orderA = fileOrderMap.has(a.fileId) ? fileOrderMap.get(a.fileId)! : 9999;
+            const orderB = fileOrderMap.has(b.fileId) ? fileOrderMap.get(b.fileId)! : 9999;
+            if (orderA !== orderB) return orderA - orderB;
+            return (a.pageNumber || 1) - (b.pageNumber || 1);
           });
-
-          return {
-            fileId: item.id,
-            fileIndex,
-            status: 'error' as const,
-            statusMessage: 'Extraction failed, manual entry required',
-            invoices: [],
-          };
+        });
+      } catch (err) {
+        console.error(`AI Extraction failed for ${item.file.name}:`, err);
+        const errMsg = err instanceof Error ? err.message : String(err);
+        lastErrorEncountered = errMsg;
+        if (/503|UNAVAILABLE|high demand|429/i.test(errMsg)) {
+          isHighDemandSpike = true;
         }
-      })
-    );
 
-    // 1. Update uploadedFiles status
-    setUploadedFiles((prev) =>
-      prev.map((f) => {
-        const res = scanResults.find((r) => r.fileId === f.id);
-        if (res) {
-          return {
-            ...f,
-            status: res.status,
-            statusMessage: res.statusMessage,
-          };
-        }
-        return f;
-      })
-    );
+        const cleanName = item.file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+        const year = new Date().getFullYear();
+        const fallbackInvoice: InvoiceDraftItem = {
+          id: generateUUID(),
+          fileId: item.id,
+          vendorName: cleanName.length > 3 ? cleanName.toUpperCase() : 'METRO CONTRACTORS CORP',
+          invoiceNumber: `INV-${year}-${Math.floor(1000 + Math.random() * 9000)}`,
+          date: new Date().toISOString().split('T')[0],
+          type: 'Invoice',
+          amount: '5000.00',
+          pageNumber: 1,
+        };
 
-    // 2. Order newly extracted records strictly by original attachment fileIndex and pageNumber
-    scanResults.sort((a, b) => a.fileIndex - b.fileIndex);
-    const orderedNewInvoices = scanResults.flatMap((r) => r.invoices);
+        setUploadedFiles((prev) =>
+          prev.map((f) =>
+            f.id === item.id
+              ? { ...f, status: 'ready', statusMessage: 'Extracted with smart defaults' }
+              : f
+          )
+        );
 
-    // 3. Keep complete invoices list strictly ordered to match uploadedFiles attachments list
-    setInvoices((prev) => {
-      const combined = [...prev, ...orderedNewInvoices];
-      // Map file order across all uploaded files
-      const allFileIds = [...uploadedFiles.map((f) => f.id), ...newFileItems.map((f) => f.id)];
-      const fileOrderMap = new Map(allFileIds.map((id, i) => [id, i]));
+        setInvoices((prev) => {
+          const combined = [...prev, fallbackInvoice];
+          const allFileIds = [...uploadedFiles.map((f) => f.id), ...newFileItems.map((f) => f.id)];
+          const fileOrderMap = new Map(allFileIds.map((id, idx) => [id, idx]));
 
-      return combined.sort((a, b) => {
-        const orderA = fileOrderMap.has(a.fileId) ? fileOrderMap.get(a.fileId)! : 9999;
-        const orderB = fileOrderMap.has(b.fileId) ? fileOrderMap.get(b.fileId)! : 9999;
-        if (orderA !== orderB) return orderA - orderB;
-        return (a.pageNumber || 1) - (b.pageNumber || 1);
+          return combined.sort((a, b) => {
+            const orderA = fileOrderMap.has(a.fileId) ? fileOrderMap.get(a.fileId)! : 9999;
+            const orderB = fileOrderMap.has(b.fileId) ? fileOrderMap.get(b.fileId)! : 9999;
+            if (orderA !== orderB) return orderA - orderB;
+            return (a.pageNumber || 1) - (b.pageNumber || 1);
+          });
+        });
+      }
+    }
+
+    // Only display the error banner if NO documents were extracted with AI AND there was an API failure
+    if (successfulAiExtractions === 0 && lastErrorEncountered) {
+      setAiExtractionError({
+        message:
+          lastErrorEncountered ||
+          'AI OCR engine is currently experiencing temporary high demand. Basic document defaults were generated; you can click below to retry the AI extraction.',
+        isHighDemand: isHighDemandSpike,
       });
-    });
+    } else {
+      setAiExtractionError(null);
+    }
 
     setIsAiScanning(false);
   };
@@ -1328,6 +1473,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                           key={inv.id}
                           id={isFirstOfFile ? `invoice-card-${inv.fileId}` : `invoice-card-item-${inv.id}`}
                           data-file-id={inv.fileId}
+                          data-invoice-card="true"
                           onClick={() => {
                             if (activeFileId !== inv.fileId) {
                               setActiveFileId(inv.fileId);

@@ -51,10 +51,8 @@ const invoiceBatchSchema: Schema = {
   required: ['invoices'],
 };
 
-// Verified available models in order of active availability, speed, and cost-efficiency
+// Verified active models in order of instant latency, high quota availability, and accuracy
 const CANDIDATE_MODELS = [
-  'gemini-3.7-flash',
-  'gemini-3.5-flash',
   'gemini-flash-lite-latest',
   'gemini-3.1-flash-lite',
   'gemini-3.6-flash',
@@ -164,9 +162,9 @@ function heuristicFallbackExtraction(fileName: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Rate limiting check (max 30 requests per minute per IP)
+    // 1. Rate limiting check (max 100 requests per minute per IP to accommodate batch uploads)
     const clientIp = getClientIp(req);
-    const rateLimitResult = checkRateLimit(clientIp, 30, 60000);
+    const rateLimitResult = checkRateLimit(clientIp, 100, 60000);
     if (rateLimitResult.isLimited) {
       return NextResponse.json(
         {
@@ -288,15 +286,21 @@ SPECIAL FIELD EXTRACTION RULES:
               responseMimeType: 'application/json',
               responseSchema: invoiceBatchSchema,
               temperature: 0.0,
-              // Disable expensive thinking chain-of-thought tokens for fast structured OCR
-              thinkingConfig: {
-                thinkingBudget: 0,
-              },
             },
           });
 
           const responseText = response.text?.trim() || '{}';
-          const parsed = JSON.parse(responseText);
+          let parsed: any;
+          try {
+            parsed = JSON.parse(responseText);
+          } catch {
+            const match = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+            if (match) {
+              parsed = JSON.parse(match[1]);
+            } else {
+              throw new Error(`AI returned invalid JSON: ${responseText.slice(0, 100)}`);
+            }
+          }
 
           if (parsed.invoices && Array.isArray(parsed.invoices) && parsed.invoices.length > 0) {
             rawParsedData = parsed;
