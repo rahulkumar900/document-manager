@@ -88,6 +88,9 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
   // Mobile View Tab (Toggle between Document Preview and Invoice Form on small screens)
   const [mobileTab, setMobileTab] = useState<'form' | 'preview'>('form');
 
+  // Active Review Draft Persistence State
+  const [isDraftRestored, setIsDraftRestored] = useState<boolean>(false);
+
   // Review Assistance & Scroll Synchronization Refs
   const invoiceListContainerRef = useRef<HTMLDivElement>(null);
   const isProgrammaticScrollRef = useRef<boolean>(false);
@@ -225,6 +228,158 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
       clearTimeout(timer3);
     };
   }, [isAiScanning]);
+
+  // 1. Auto-restore unsubmitted review draft on initial mount if available
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw =
+        sessionStorage.getItem('site_docs_review_draft_v1') ||
+        localStorage.getItem('site_docs_review_draft_v1');
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw);
+      // Ensure draft is relatively fresh (within 8 hours)
+      if (parsed && parsed.timestamp && Date.now() - parsed.timestamp < 8 * 60 * 60 * 1000) {
+        if (parsed.invoices && Array.isArray(parsed.invoices) && parsed.invoices.length > 0) {
+          setInvoices(parsed.invoices);
+          if (parsed.targetSiteId) {
+            setTargetSiteId(parsed.targetSiteId);
+          }
+
+          if (parsed.files && Array.isArray(parsed.files) && parsed.files.length > 0) {
+            const restoredFiles: UploadedFileItem[] = parsed.files.map((f: any) => {
+              let restoredFile: File;
+              try {
+                if (f.fileData && f.fileData.startsWith('data:')) {
+                  const arr = f.fileData.split(',');
+                  const mime = arr[0].match(/:(.*?);/)?.[1] || f.fileType || 'application/pdf';
+                  const bstr = atob(arr[1]);
+                  let n = bstr.length;
+                  const u8arr = new Uint8Array(n);
+                  while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
+                  }
+                  restoredFile = new File([u8arr], f.fileName || 'document.pdf', { type: mime });
+                } else {
+                  restoredFile = new File([], f.fileName || 'document.pdf', {
+                    type: f.fileType || 'application/pdf',
+                  });
+                }
+              } catch {
+                restoredFile = new File([], f.fileName || 'document.pdf', {
+                  type: f.fileType || 'application/pdf',
+                });
+              }
+
+              let blobUrl: string | null = null;
+              try {
+                blobUrl = URL.createObjectURL(restoredFile);
+              } catch {
+                blobUrl = f.fileData || null;
+              }
+
+              return {
+                id: f.id,
+                file: restoredFile,
+                fileData: f.fileData || null,
+                blobUrl,
+                fileType: f.fileType || restoredFile.type,
+                fileSize: f.fileSize || 1024,
+                status: (f.status as 'ready' | 'scanning' | 'error') || 'ready',
+                statusMessage: f.statusMessage || 'Restored from session draft',
+              };
+            });
+
+            setUploadedFiles(restoredFiles);
+            if (restoredFiles.length > 0) {
+              setActiveFileId(restoredFiles[0].id);
+            }
+          }
+
+          setIsDraftRestored(true);
+        }
+      }
+    } catch (e) {
+      console.warn('Could not restore review draft:', e);
+    }
+  }, []);
+
+  // 2. Persist active review draft into storage to prevent any mid-review data loss
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (invoices.length === 0 && uploadedFiles.length === 0) return;
+    if (uploadPhase === 'success') {
+      try {
+        sessionStorage.removeItem('site_docs_review_draft_v1');
+        localStorage.removeItem('site_docs_review_draft_v1');
+      } catch {}
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      try {
+        const serializableFiles = uploadedFiles.map((f) => ({
+          id: f.id,
+          fileName: f.file.name,
+          fileType: f.fileType,
+          fileSize: f.fileSize,
+          status: f.status,
+          statusMessage: f.statusMessage,
+          // Only save fileData if under 4MB to prevent localStorage QuotaExceeded
+          fileData: f.fileData && f.fileData.length < 4 * 1024 * 1024 ? f.fileData : null,
+        }));
+
+        const payload = JSON.stringify({
+          invoices,
+          targetSiteId,
+          files: serializableFiles,
+          timestamp: Date.now(),
+        });
+
+        sessionStorage.setItem('site_docs_review_draft_v1', payload);
+        try {
+          localStorage.setItem('site_docs_review_draft_v1', payload);
+        } catch {}
+      } catch (err) {
+        console.warn('Could not auto-save review draft:', err);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [invoices, uploadedFiles, targetSiteId, uploadPhase]);
+
+  // 3. Clear draft helper
+  const clearActiveDraft = () => {
+    try {
+      sessionStorage.removeItem('site_docs_review_draft_v1');
+      localStorage.removeItem('site_docs_review_draft_v1');
+    } catch {}
+    setIsDraftRestored(false);
+  };
+
+  // 4. Warn before accidental page reload / tab closure during review
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (invoices.length > 0 && uploadPhase !== 'success') {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [invoices.length, uploadPhase]);
+
+  // 5. Safe cancellation handler with confirmation
+  const handleCancelClick = () => {
+    if (invoices.length > 0) {
+      if (!window.confirm('Are you sure you want to cancel? Any unsaved document review data will be discarded.')) {
+        return;
+      }
+    }
+    clearActiveDraft();
+    onCancel();
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -788,6 +943,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
       setUploadStatusText(`Complete! ${createdDocs.length} document(s) successfully archived.`);
       setCreatedDocRecords(createdDocs);
       setUploadPhase('success');
+      clearActiveDraft();
 
       // Seamless redirect to dashboard
       setTimeout(() => {
@@ -837,7 +993,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
       <header className="sticky top-0 z-30 bg-neutral-900/80 backdrop-blur-xl border-b border-neutral-800/80 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-sm">
         <div className="flex items-center space-x-4">
           <button
-            onClick={onCancel}
+            onClick={handleCancelClick}
             disabled={uploadPhase === 'uploading'}
             className="inline-flex items-center gap-2 text-xs font-bold text-neutral-300 hover:text-white bg-neutral-800/80 hover:bg-neutral-700/80 disabled:opacity-50 px-3 py-2 rounded-xl active:scale-95 transition-all border border-neutral-700/60 shadow-sm cursor-pointer"
           >
@@ -1377,6 +1533,50 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
               </div>
             )}
 
+            {/* Active Session Draft Restored Banner */}
+            {isDraftRestored && (
+              <div className="mb-5 bg-gradient-to-r from-purple-950/70 to-indigo-950/60 border border-purple-500/50 rounded-2xl p-4 shadow-lg flex items-center justify-between gap-3 animate-in fade-in">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-purple-600/30 border border-purple-500/60 flex items-center justify-center shrink-0 text-purple-300">
+                    <Icons.Check className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-white flex items-center gap-2">
+                      <span>Session Review Draft Restored</span>
+                      <span className="text-[10px] font-mono text-purple-300 bg-purple-900/60 border border-purple-700/60 px-2 py-0.5 rounded-full">
+                        {invoices.length} record(s)
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-purple-200/90 mt-0.5">
+                      We automatically preserved your unsubmitted invoice review data so your progress was not lost.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearActiveDraft();
+                      setInvoices([]);
+                      setUploadedFiles([]);
+                      setActiveFileId(null);
+                    }}
+                    className="text-[11px] text-neutral-400 hover:text-rose-400 bg-neutral-900 hover:bg-rose-950/40 border border-neutral-800 hover:border-rose-800/60 px-3 py-1.5 rounded-xl transition-all cursor-pointer font-bold"
+                    title="Clear this draft and start a fresh upload"
+                  >
+                    Discard Draft
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsDraftRestored(false)}
+                    className="text-neutral-400 hover:text-white text-xs px-2 py-1.5 cursor-pointer"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Form Header */}
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
@@ -1818,7 +2018,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                   <button
                     type="button"
                     disabled={uploadPhase === 'uploading'}
-                    onClick={onCancel}
+                    onClick={handleCancelClick}
                     className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold text-xs py-3.5 px-5 rounded-xl active:scale-95 transition-all cursor-pointer border border-neutral-700/60"
                   >
                     Cancel

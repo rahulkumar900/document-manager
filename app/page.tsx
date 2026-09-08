@@ -201,12 +201,23 @@ function DocumentPortalContent() {
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
         if (session?.user) {
           const profile = await fetchUserProfile(session.user.id, session.user.email);
-          if (profile) {
-            setCurrentUser(profile);
+          if (profile && isMounted) {
+            setCurrentUser((prev) => {
+              if (
+                prev &&
+                prev.id === profile.id &&
+                prev.role === profile.role &&
+                prev.assignedSiteId === profile.assignedSiteId &&
+                prev.name === profile.name &&
+                prev.email === profile.email
+              ) {
+                return prev; // Maintain stable reference to prevent unneeded re-renders
+              }
+              return profile;
+            });
             saveSession(profile);
-            if (currentView === 'auth') {
-              setCurrentView('dashboard');
-            }
+            // Only transition to dashboard if user was strictly on the auth/login view
+            setCurrentView((prev) => (prev === 'auth' ? 'dashboard' : prev));
           }
         }
       } else if (event === 'SIGNED_OUT') {
@@ -229,12 +240,13 @@ function DocumentPortalContent() {
     if (!isHydrated) return;
 
     if (currentUser) {
-      // Sync View
+      // Sync View: only switch if explicitly declared in searchParams, otherwise preserve current view
       const viewParam = searchParams.get('view') as ViewMode | null;
       if (viewParam && ['auth', 'dashboard', 'documents', 'upload', 'preview'].includes(viewParam)) {
-        setCurrentView(viewParam);
+        setCurrentView((prev) => (prev !== viewParam ? viewParam : prev));
       } else {
-        setCurrentView('dashboard');
+        // Only default to dashboard if currently on auth view
+        setCurrentView((prev) => (prev === 'auth' ? 'dashboard' : prev));
       }
 
       // Sync Search Query
