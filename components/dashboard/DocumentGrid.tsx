@@ -43,8 +43,8 @@ export const DocumentGrid: React.FC<DocumentGridProps> = React.memo(({
               onClick={() => onPreview(doc.id)}
               className={`group cursor-pointer rounded-2xl md:rounded-3xl transition-all duration-200 border relative hover:z-20 ${
                 isSelected
-                  ? 'bg-neutral-900 border-purple-500 ring-2 ring-purple-500/40 shadow-lg shadow-purple-950/40'
-                  : 'bg-neutral-900/90 border-neutral-800 hover:border-neutral-700 hover:bg-neutral-900 shadow-sm hover:shadow-xl hover:shadow-neutral-950/60'
+                  ? 'bg-card border-ring ring-2 ring-ring/40 shadow-lg'
+                  : 'bg-card border-border hover:border-muted-foreground/30 shadow-sm hover:shadow-xl'
               }`}
             >
               {/* ========================================================= */}
@@ -62,15 +62,15 @@ export const DocumentGrid: React.FC<DocumentGridProps> = React.memo(({
                       }}
                       className={`w-4 h-4 rounded-md flex items-center justify-center transition-all border shrink-0 cursor-pointer ${
                         isSelected
-                          ? 'bg-purple-600 border-purple-500 text-white shadow-sm'
-                          : 'bg-neutral-950 border-neutral-700 hover:border-neutral-500 text-transparent'
+                          ? 'bg-primary border-primary text-primary-foreground shadow-sm'
+                          : 'bg-background border-input hover:border-muted-foreground text-transparent'
                       }`}
                       aria-label={`Select document ${doc.invoiceNumber}`}
                     >
                       <Icons.Check className="w-3 h-3 stroke-[3]" />
                     </button>
 
-                    <h3 className="text-sm font-bold text-white group-hover:text-purple-200 truncate transition-colors">
+                    <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
                       {doc.vendorName}
                     </h3>
                   </div>
@@ -83,14 +83,14 @@ export const DocumentGrid: React.FC<DocumentGridProps> = React.memo(({
                 </div>
 
                 {/* Row 2: Type Pill • Invoice # • Site Code • Status • Action Menu */}
-                <div className="flex items-center justify-between gap-2 pt-2 border-t border-neutral-800/60 text-xs">
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/80 text-xs">
                   <div className="flex items-center gap-1.5 overflow-hidden">
                     <span
                       className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border shrink-0 ${
                         doc.type === 'Invoice'
-                          ? 'bg-purple-950/70 text-purple-300 border-purple-800/60'
+                          ? 'bg-secondary text-secondary-foreground border-border'
                           : doc.type === 'Challan'
-                          ? 'bg-indigo-950/70 text-indigo-300 border-indigo-800/60'
+                          ? 'bg-muted text-muted-foreground border-border'
                           : doc.type === 'Credit Note'
                           ? 'bg-rose-950/70 text-rose-300 border-rose-800/60'
                           : 'bg-sky-950/70 text-sky-300 border-sky-800/60'
@@ -99,13 +99,13 @@ export const DocumentGrid: React.FC<DocumentGridProps> = React.memo(({
                       {doc.type}
                     </span>
 
-                    <span className="font-mono text-xs text-neutral-300 truncate max-w-[120px]">
+                    <span className="font-mono text-xs text-foreground truncate max-w-[120px]">
                       {doc.invoiceNumber}
                     </span>
 
-                    <span className="text-neutral-600">•</span>
+                    <span className="text-muted-foreground">•</span>
 
-                    <span className="text-[10px] font-mono text-neutral-400 bg-neutral-950 px-1.5 py-0.5 rounded border border-neutral-800 shrink-0">
+                    <span className="text-[10px] font-mono text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded border border-border shrink-0">
                       {site?.code || 'SITE'}
                     </span>
                   </div>
@@ -156,8 +156,8 @@ export const DocumentGrid: React.FC<DocumentGridProps> = React.memo(({
                         }}
                         className={`w-5 h-5 rounded-lg flex items-center justify-center transition-all border shrink-0 cursor-pointer ${
                           isSelected
-                            ? 'bg-purple-600 border-purple-500 text-white shadow-sm'
-                            : 'bg-neutral-950 border-neutral-700 hover:border-neutral-500 text-transparent'
+                            ? 'bg-primary border-primary text-primary-foreground shadow-sm'
+                            : 'bg-background border-input hover:border-muted-foreground text-transparent'
                         }`}
                         aria-label={`Select document ${doc.invoiceNumber}`}
                       >
@@ -167,9 +167,9 @@ export const DocumentGrid: React.FC<DocumentGridProps> = React.memo(({
                       <span
                         className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${
                           doc.type === 'Invoice'
-                            ? 'bg-purple-950/80 text-purple-300 border-purple-800/80'
+                            ? 'bg-secondary text-secondary-foreground border-border'
                             : doc.type === 'Challan'
-                            ? 'bg-indigo-950/80 text-indigo-300 border-indigo-800/80'
+                            ? 'bg-muted text-muted-foreground border-border'
                             : doc.type === 'Credit Note'
                             ? 'bg-rose-950/80 text-rose-300 border-rose-800/80'
                             : 'bg-sky-950/80 text-sky-300 border-sky-800/80'
@@ -215,26 +215,26 @@ export const DocumentGrid: React.FC<DocumentGridProps> = React.memo(({
 
                   {/* Vendor Name & Reference */}
                   <div className="mb-3">
-                    <h3 className="text-base font-bold text-white group-hover:text-purple-200 transition-colors line-clamp-1">
+                    <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">
                       {doc.vendorName}
                     </h3>
-                    <div className="flex items-center gap-2 text-xs font-mono text-neutral-400 mt-1">
-                      <span className="text-purple-300 font-semibold">{doc.invoiceNumber}</span>
+                    <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground mt-1">
+                      <span className="text-foreground font-semibold">{doc.invoiceNumber}</span>
                       <span>•</span>
                       <span>{formatDate(doc.date)}</span>
                     </div>
                   </div>
 
                   {/* Site Scope Card */}
-                  <div className="bg-neutral-950/70 rounded-xl p-3 border border-neutral-800/80 mb-4">
+                  <div className="bg-muted/40 rounded-xl p-3 border border-border/80 mb-4">
                     <div className="flex items-center justify-between text-xs gap-2">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <Icons.Building className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
-                        <span className="text-neutral-300 truncate font-medium">
+                        <Icons.Building className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <span className="text-foreground truncate font-medium">
                           {site ? site.name : 'Unknown Site'}
                         </span>
                       </div>
-                      <span className="font-mono text-[10px] font-bold bg-neutral-800 px-2 py-0.5 rounded text-neutral-300 shrink-0">
+                      <span className="font-mono text-[10px] font-bold bg-secondary text-secondary-foreground border border-border px-2 py-0.5 rounded shrink-0">
                         {site?.code || 'SITE'}
                       </span>
                     </div>
@@ -242,12 +242,12 @@ export const DocumentGrid: React.FC<DocumentGridProps> = React.memo(({
                 </div>
 
                 {/* Footer: Amount & Quick Actions */}
-                <div className="flex items-baseline justify-between pt-3.5 border-t border-neutral-800/80 mt-auto">
+                <div className="flex items-baseline justify-between pt-3.5 border-t border-border/80 mt-auto">
                   <div>
-                    <span className="text-[10px] uppercase tracking-wider font-bold text-neutral-400 block mb-0.5">
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground block mb-0.5">
                       Total Amount
                     </span>
-                    <span className="text-xl font-black font-mono text-white group-hover:text-emerald-400 transition-colors">
+                    <span className="text-xl font-black font-mono text-foreground group-hover:text-emerald-400 transition-colors">
                       {formatCurrency(doc.amount)}
                     </span>
                   </div>
@@ -272,10 +272,10 @@ export const DocumentGrid: React.FC<DocumentGridProps> = React.memo(({
                         e.stopPropagation();
                         onPreview(doc.id);
                       }}
-                      className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-secondary text-secondary-foreground hover:bg-accent border border-border transition-colors cursor-pointer"
                       title="Preview Document"
                     >
-                      <Icons.Eye className="w-3.5 h-3.5 text-purple-400" />
+                      <Icons.Eye className="w-3.5 h-3.5 text-primary" />
                       <span>Preview</span>
                     </button>
                   </div>
@@ -288,15 +288,15 @@ export const DocumentGrid: React.FC<DocumentGridProps> = React.memo(({
 
       {/* Grid Summary Footer: Total Amount */}
       {documents.length > 0 && (
-        <div className="bg-neutral-900 border border-neutral-800/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg mb-8">
-          <div className="flex items-center gap-2.5 text-xs text-neutral-400">
-            <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+        <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg mb-8">
+          <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
+            <span className="w-2.5 h-2.5 rounded-full bg-primary" />
             <span>
-              Showing total for <strong className="text-white font-bold">{documents.length}</strong> document{documents.length > 1 ? 's' : ''} on this page
+              Showing total for <strong className="text-foreground font-bold">{documents.length}</strong> document{documents.length > 1 ? 's' : ''} on this page
             </span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-xs uppercase font-bold text-neutral-400 tracking-wider">
+            <span className="text-xs uppercase font-bold text-muted-foreground tracking-wider">
               Total Amount:
             </span>
             <span className="text-lg sm:text-xl font-mono font-black text-emerald-400">

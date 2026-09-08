@@ -32,28 +32,28 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
   onDelete,
 }) => {
   return (
-    <div className="w-full h-auto bg-neutral-900 border border-neutral-800 rounded-3xl shadow-xl mb-8 relative overflow-hidden">
+    <div className="w-full h-auto bg-card border border-border rounded-3xl shadow-xl mb-8 relative overflow-hidden">
       {/* 1. Mobile Optimized Card List View (< sm screens) */}
-      <div className="block sm:hidden divide-y divide-neutral-800/80">
+      <div className="block sm:hidden divide-y divide-border/80">
         {/* Mobile Page Select All Header */}
-        <div className="p-3.5 bg-neutral-950/80 flex items-center justify-between border-b border-neutral-800 text-xs">
+        <div className="p-3.5 bg-muted/50 flex items-center justify-between border-b border-border text-xs">
           <button
             type="button"
             onClick={onToggleSelectPage}
-            className="flex items-center gap-2 text-neutral-300 font-semibold active:scale-95 transition-transform cursor-pointer"
+            className="flex items-center gap-2 text-foreground font-semibold active:scale-95 transition-transform cursor-pointer"
           >
             <div
               className={`w-4 h-4 rounded-md flex items-center justify-center transition-all border ${
                 isAllPageSelected && documents.length > 0
-                  ? 'bg-purple-600 border-purple-500 text-white'
-                  : 'bg-neutral-900 border-neutral-700 text-transparent'
+                  ? 'bg-primary border-primary text-primary-foreground'
+                  : 'bg-background border-input text-transparent'
               }`}
             >
               <Icons.Check className="w-3 h-3 stroke-[3]" />
             </div>
             <span>{isAllPageSelected ? 'Deselect Page' : 'Select All Page'}</span>
           </button>
-          <span className="text-[11px] font-mono text-neutral-500">
+          <span className="text-[11px] font-mono text-muted-foreground">
             {documents.length} item{documents.length !== 1 ? 's' : ''}
           </span>
         </div>
@@ -67,8 +67,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
             <div
               key={doc.id}
               onClick={() => onPreview(doc.id)}
-              className={`p-4 transition-colors cursor-pointer active:bg-neutral-800/60 relative ${
-                isSelected ? 'bg-purple-950/30' : 'hover:bg-neutral-800/30'
+              className={`p-4 transition-colors cursor-pointer active:bg-accent/60 relative ${
+                isSelected ? 'bg-primary/10' : 'hover:bg-muted/40'
               }`}
             >
               <div className="flex items-start justify-between gap-3">
@@ -82,40 +82,40 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                     }}
                     className={`w-5 h-5 rounded-lg flex items-center justify-center transition-all border shrink-0 mt-0.5 ${
                       isSelected
-                        ? 'bg-purple-600 border-purple-500 text-white shadow-sm'
-                        : 'bg-neutral-950 border-neutral-700 text-transparent'
+                        ? 'bg-primary border-primary text-primary-foreground shadow-sm'
+                        : 'bg-background border-input text-transparent'
                     }`}
                     aria-label={`Select document ${doc.invoiceNumber}`}
                   >
-                    <Icons.Check className="w-3.5 h-3.5 stroke-[3]" />
+                    <Icons.Check className="w-3.5 h-3.5 stroke-[2.5]" />
                   </button>
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="text-sm font-bold text-white truncate">{doc.vendorName}</h4>
+                      <h4 className="text-sm font-bold text-foreground truncate">{doc.vendorName}</h4>
                       <span
                         className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                           doc.type === 'Invoice'
-                            ? 'bg-purple-950/80 text-purple-300 border-purple-800/80'
+                            ? 'bg-secondary text-secondary-foreground border-border'
                             : doc.type === 'Challan'
-                            ? 'bg-indigo-950/80 text-indigo-300 border-indigo-800/80'
+                            ? 'bg-secondary text-secondary-foreground border-border'
                             : doc.type === 'Credit Note'
-                            ? 'bg-rose-950/80 text-rose-300 border-rose-800/80'
-                            : 'bg-sky-950/80 text-sky-300 border-sky-800/80'
+                            ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                            : 'bg-sky-500/10 text-sky-400 border-sky-500/20'
                         }`}
                       >
                         {doc.type}
                       </span>
                     </div>
 
-                    <div className="text-xs font-mono text-neutral-400 mt-1 flex items-center gap-2 flex-wrap">
-                      <span className="text-purple-300 font-semibold">{doc.invoiceNumber}</span>
+                    <div className="text-xs font-mono text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+                      <span className="text-foreground font-semibold">{doc.invoiceNumber}</span>
                       <span>•</span>
                       <span>{formatDate(doc.date)}</span>
                     </div>
 
-                    <div className="text-[11px] text-neutral-500 mt-1 flex items-center gap-1.5">
-                      <Icons.Building className="w-3 h-3 text-neutral-500 shrink-0" />
+                    <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1.5">
+                      <Icons.Building className="w-3 h-3 text-muted-foreground shrink-0" />
                       <span className="truncate">{site ? `${site.name} (${site.code})` : 'Unassigned'}</span>
                     </div>
                   </div>
@@ -130,8 +130,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                     <span
                       className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
                         doc.status === 'verified'
-                          ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
-                          : 'bg-amber-950 text-amber-300 border-amber-800'
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                       }`}
                     >
                       {doc.status === 'verified' ? 'Verified' : 'Pending'}
@@ -156,8 +156,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
 
         {/* Mobile Total Footer */}
         {documents.length > 0 && (
-          <div className="p-4 bg-neutral-950/90 border-t border-neutral-800 flex items-center justify-between text-xs">
-            <span className="text-neutral-400 font-bold uppercase tracking-wider text-[10px]">
+          <div className="p-4 bg-muted/20 border-t border-border flex items-center justify-between text-xs">
+            <span className="text-muted-foreground font-bold uppercase tracking-wider text-[10px]">
               Page Total ({documents.length} docs):
             </span>
             <span className="font-mono font-black text-sm text-emerald-400">
@@ -171,15 +171,15 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
       <div className="hidden sm:block w-full h-auto overflow-x-auto rounded-3xl">
         <table className="w-full h-auto text-left text-xs sm:text-sm">
           <thead>
-            <tr className="bg-neutral-950/70 border-b border-neutral-800 text-[11px] font-black uppercase tracking-wider text-neutral-400">
+            <tr className="bg-muted/40 border-b border-border text-[11px] font-black uppercase tracking-wider text-muted-foreground">
               <th className="py-4 px-4 w-10 text-center">
                 <button
                   type="button"
                   onClick={onToggleSelectPage}
                   className={`w-4 h-4 rounded-md flex items-center justify-center transition-all border ${
                     isAllPageSelected && documents.length > 0
-                      ? 'bg-purple-600 border-purple-500 text-white'
-                      : 'bg-neutral-950 border-neutral-700 hover:border-neutral-500 text-transparent'
+                      ? 'bg-primary border-primary text-primary-foreground'
+                      : 'bg-background border-input hover:border-muted-foreground text-transparent'
                   }`}
                   title={isAllPageSelected ? 'Deselect all on this page' : 'Select all on this page'}
                   aria-label="Select all on this page"
@@ -197,7 +197,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
               <th className="py-4 px-4 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-800 font-medium h-auto">
+          <tbody className="divide-y divide-border font-medium h-auto">
             {documents.map((doc) => {
               const site = siteMap.get(doc.siteId);
               const isSelected = selectedDocIds.has(doc.id);
@@ -207,8 +207,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                   key={doc.id}
                   className={`transition-colors group cursor-pointer relative hover:z-20 ${
                     isSelected
-                      ? 'bg-purple-950/20 hover:bg-purple-950/30'
-                      : 'hover:bg-neutral-800/40'
+                      ? 'bg-accent/40 hover:bg-accent/60'
+                      : 'hover:bg-muted/40'
                   }`}
                   onClick={() => onPreview(doc.id)}
                 >
@@ -224,8 +224,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                       type="button"
                       className={`w-4 h-4 rounded-md flex items-center justify-center transition-all border ${
                         isSelected
-                          ? 'bg-purple-600 border-purple-500 text-white shadow-sm'
-                          : 'bg-neutral-950 border-neutral-700 hover:border-neutral-500 text-transparent'
+                          ? 'bg-primary border-primary text-primary-foreground shadow-sm'
+                          : 'bg-background border-input hover:border-muted-foreground text-transparent'
                       }`}
                       aria-label={`Select document ${doc.invoiceNumber}`}
                     >
@@ -234,15 +234,15 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                   </td>
 
                   <td className="py-4 px-4">
-                    <div className="font-bold text-white group-hover:text-neutral-200">
+                    <div className="font-bold text-foreground group-hover:text-primary transition-colors">
                       {doc.vendorName}
                     </div>
-                    <div className="text-[11px] text-neutral-500 font-mono">
+                    <div className="text-[11px] text-muted-foreground font-mono">
                       By {doc.uploadedBy}
                     </div>
                   </td>
 
-                  <td className="py-4 px-4 font-mono text-neutral-300">
+                  <td className="py-4 px-4 font-mono text-foreground">
                     <div className="flex items-center gap-1.5">
                       <span>{doc.invoiceNumber}</span>
                       {doc.fileUrl && (
@@ -252,11 +252,11 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                   </td>
 
                   <td className="py-4 px-4">
-                    <div className="text-neutral-300 font-semibold">{site?.name || 'Unassigned'}</div>
-                    <div className="text-[10px] font-mono text-neutral-500">{site?.code || 'SITE'}</div>
+                    <div className="text-foreground font-semibold">{site?.name || 'Unassigned'}</div>
+                    <div className="text-[10px] font-mono text-muted-foreground">{site?.code || 'SITE'}</div>
                   </td>
 
-                  <td className="py-4 px-4 font-mono text-neutral-400">
+                  <td className="py-4 px-4 font-mono text-muted-foreground">
                     {formatDate(doc.date)}
                   </td>
 
@@ -264,9 +264,9 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                     <span
                       className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${
                         doc.type === 'Invoice'
-                          ? 'bg-purple-950/80 text-purple-300 border-purple-800/80'
+                          ? 'bg-secondary text-secondary-foreground border-border'
                           : doc.type === 'Challan'
-                          ? 'bg-indigo-950/80 text-indigo-300 border-indigo-800/80'
+                          ? 'bg-muted text-muted-foreground border-border'
                           : doc.type === 'Credit Note'
                           ? 'bg-rose-950/80 text-rose-300 border-rose-800/80'
                           : 'bg-sky-950/80 text-sky-300 border-sky-800/80'
@@ -276,7 +276,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                     </span>
                   </td>
 
-                  <td className="py-4 px-4 text-right font-mono font-bold text-white">
+                  <td className="py-4 px-4 text-right font-mono font-bold text-foreground">
                     {formatCurrency(doc.amount)}
                   </td>
 
@@ -323,20 +323,20 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
             })}
           </tbody>
           {documents.length > 0 && (
-            <tfoot className="bg-neutral-950/90 border-t-2 border-neutral-800 text-xs font-bold">
+            <tfoot className="bg-muted/40 border-t-2 border-border text-xs font-bold">
               <tr>
                 <td className="py-4 px-4 text-center">
-                  <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" />
+                  <span className="w-2 h-2 rounded-full bg-primary inline-block" />
                 </td>
-                <td className="py-4 px-4 text-white uppercase tracking-wider font-mono text-[11px]" colSpan={4}>
+                <td className="py-4 px-4 text-foreground uppercase tracking-wider font-mono text-[11px]" colSpan={4}>
                   <div className="flex items-center gap-2">
-                    <span className="text-neutral-400">Page Total:</span>
-                    <span className="text-purple-300 font-bold font-sans">
+                    <span className="text-muted-foreground">Page Total:</span>
+                    <span className="text-foreground font-bold font-sans">
                       {documents.length} document{documents.length > 1 ? 's' : ''}
                     </span>
                   </div>
                 </td>
-                <td className="py-4 px-4 text-right uppercase tracking-wider text-neutral-400 text-[11px]">
+                <td className="py-4 px-4 text-right uppercase tracking-wider text-muted-foreground text-[11px]">
                   Total:
                 </td>
                 <td className="py-4 px-4 text-right font-mono font-black text-sm text-emerald-400">

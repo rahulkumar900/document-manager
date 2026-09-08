@@ -19,7 +19,7 @@ const badgeVariants = cva(
         warning:
           "border-transparent bg-amber-500/15 text-amber-400 hover:bg-amber-500/25",
         purple:
-          "border-transparent bg-purple-500/15 text-purple-400 hover:bg-purple-500/25",
+          "border-transparent bg-primary/15 text-primary hover:bg-primary/25",
       },
     },
     defaultVariants: {

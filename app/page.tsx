@@ -602,7 +602,7 @@ function DocumentPortalContent() {
   const isDocumentsView = currentView === 'documents';
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white flex flex-col font-sans relative pb-20">
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans relative pb-20">
       {/* Top Navbar with Navigation Tabs */}
       <Navbar
         currentUser={currentUser}
@@ -815,7 +815,7 @@ function DocumentPortalContent() {
             setCurrentView('upload');
             updateUrlParams({ view: 'upload' });
           }}
-          className="sm:hidden fixed bottom-6 right-5 z-40 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-95 text-white font-black text-sm py-3.5 px-4 rounded-2xl shadow-2xl shadow-purple-900/60 flex items-center gap-2 border border-purple-400/40 cursor-pointer animate-in fade-in slide-in-from-bottom-4 duration-300"
+          className="sm:hidden fixed bottom-6 right-5 z-40 bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground font-black text-sm py-3.5 px-4 rounded-2xl shadow-2xl flex items-center gap-2 border border-border cursor-pointer animate-in fade-in slide-in-from-bottom-4 duration-300"
           aria-label="Upload document"
         >
           <Icons.Plus className="w-5 h-5 stroke-[2.5]" />

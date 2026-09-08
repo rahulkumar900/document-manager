@@ -108,8 +108,8 @@ export const DocumentActionMenu: React.FC<DocumentActionMenuProps> = ({
         aria-expanded={isOpen}
         className={`p-2 rounded-xl transition-all border ${
           isOpen
-            ? 'bg-neutral-800 text-white border-neutral-700 shadow-md ring-2 ring-purple-500/50'
-            : 'bg-neutral-900/80 hover:bg-neutral-800 text-neutral-400 hover:text-white border-neutral-800 hover:border-neutral-700'
+            ? 'bg-secondary text-foreground border-border shadow-md ring-1 ring-ring'
+            : 'bg-secondary/60 hover:bg-secondary text-muted-foreground hover:text-foreground border-border'
         }`}
       >
         <Icons.MoreVertical className="w-4 h-4" />
@@ -128,7 +128,7 @@ export const DocumentActionMenu: React.FC<DocumentActionMenuProps> = ({
               left: coords.left !== undefined ? `${coords.left}px` : 'auto',
               right: coords.right !== undefined ? `${coords.right}px` : 'auto',
             }}
-            className="w-52 bg-neutral-900/98 backdrop-blur-2xl border border-neutral-700/90 rounded-2xl shadow-2xl shadow-black p-1.5 z-[9999] animate-in fade-in zoom-in-95 duration-100 divide-y divide-neutral-800"
+            className="w-52 bg-popover text-popover-foreground backdrop-blur-2xl border border-border rounded-2xl shadow-2xl p-1.5 z-[9999] animate-in fade-in zoom-in-95 duration-100 divide-y divide-border"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Main Actions */}
@@ -138,9 +138,9 @@ export const DocumentActionMenu: React.FC<DocumentActionMenuProps> = ({
                   setIsOpen(false);
                   onPreview(doc.id);
                 }}
-                className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-neutral-200 hover:text-white hover:bg-neutral-800/80 rounded-xl transition-colors"
+                className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-foreground hover:bg-accent hover:text-accent-foreground rounded-xl transition-colors cursor-pointer"
               >
-                <Icons.Eye className="w-3.5 h-3.5 text-neutral-400" />
+                <Icons.Eye className="w-3.5 h-3.5 text-muted-foreground" />
                 <span>Preview File</span>
               </button>
 
@@ -150,9 +150,9 @@ export const DocumentActionMenu: React.FC<DocumentActionMenuProps> = ({
                     setIsOpen(false);
                     onEdit(doc);
                   }}
-                  className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-neutral-200 hover:text-white hover:bg-neutral-800/80 rounded-xl transition-colors"
+                  className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-foreground hover:bg-accent hover:text-accent-foreground rounded-xl transition-colors cursor-pointer"
                 >
-                  <Icons.Edit className="w-3.5 h-3.5 text-purple-400" />
+                  <Icons.Edit className="w-3.5 h-3.5 text-primary" />
                   <span>Edit Details</span>
                 </button>
               )}
@@ -163,9 +163,9 @@ export const DocumentActionMenu: React.FC<DocumentActionMenuProps> = ({
                     setIsOpen(false);
                     onVerify(doc.id);
                   }}
-                  className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-emerald-300 hover:text-emerald-200 hover:bg-emerald-950/60 rounded-xl transition-colors"
+                  className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-xl transition-colors cursor-pointer"
                 >
-                  <Icons.Check className="w-3.5 h-3.5 text-emerald-400 stroke-[3]" />
+                  <Icons.Check className="w-3.5 h-3.5 text-emerald-400 stroke-[2.5]" />
                   <span>Verify Document</span>
                 </button>
               )}
@@ -175,9 +175,9 @@ export const DocumentActionMenu: React.FC<DocumentActionMenuProps> = ({
                   href={fileSource}
                   download={doc.fileName || `${doc.invoiceNumber}.pdf`}
                   onClick={() => setIsOpen(false)}
-                  className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-neutral-300 hover:text-white hover:bg-neutral-800/80 rounded-xl transition-colors"
+                  className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-foreground hover:bg-accent hover:text-accent-foreground rounded-xl transition-colors cursor-pointer"
                 >
-                  <Icons.Download className="w-3.5 h-3.5 text-neutral-400" />
+                  <Icons.Download className="w-3.5 h-3.5 text-muted-foreground" />
                   <span>Download File</span>
                 </a>
               )}
@@ -191,9 +191,9 @@ export const DocumentActionMenu: React.FC<DocumentActionMenuProps> = ({
                     setIsOpen(false);
                     onDelete(doc);
                   }}
-                  className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/50 rounded-xl transition-colors"
+                  className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-destructive hover:bg-destructive/10 rounded-xl transition-colors cursor-pointer"
                 >
-                  <Icons.Trash className="w-3.5 h-3.5 text-rose-400" />
+                  <Icons.Trash className="w-3.5 h-3.5 text-destructive" />
                   <span>Delete</span>
                 </button>
               </div>

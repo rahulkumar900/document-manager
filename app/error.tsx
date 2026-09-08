@@ -15,7 +15,7 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <ErrorFallback
         title="Page Rendering Error"
         message={error.message || 'An unexpected error occurred while loading this page.'}

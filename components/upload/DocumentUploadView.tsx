@@ -988,14 +988,14 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white flex flex-col font-sans relative antialiased selection:bg-purple-500 selection:text-white">
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans relative antialiased selection:bg-primary selection:text-primary-foreground">
       {/* 1. Top Navigation Bar */}
-      <header className="sticky top-0 z-30 bg-neutral-900/80 backdrop-blur-xl border-b border-neutral-800/80 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-sm">
+      <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-xl border-b border-border px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-sm">
         <div className="flex items-center space-x-4">
           <button
             onClick={handleCancelClick}
             disabled={uploadPhase === 'uploading'}
-            className="inline-flex items-center gap-2 text-xs font-bold text-neutral-300 hover:text-white bg-neutral-800/80 hover:bg-neutral-700/80 disabled:opacity-50 px-3 py-2 rounded-xl active:scale-95 transition-all border border-neutral-700/60 shadow-sm cursor-pointer"
+            className="inline-flex items-center gap-2 text-xs font-bold text-secondary-foreground hover:text-foreground bg-secondary hover:bg-accent disabled:opacity-50 px-3 py-2 rounded-xl active:scale-95 transition-all border border-border shadow-sm cursor-pointer"
           >
             <Icons.ArrowLeft className="w-4 h-4" />
             <span>Cancel</span>
@@ -1003,19 +1003,19 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
           <div>
             <h2 className="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2">
               <span>Upload & Index Documents</span>
-              <span className="hidden sm:inline-flex text-[10px] uppercase font-bold tracking-wider bg-purple-950/70 text-purple-300 border border-purple-800/50 px-2 py-0.5 rounded-md">
+              <span className="hidden sm:inline-flex text-[10px] uppercase font-bold tracking-wider bg-primary/15 text-primary border border-primary/25 px-2 py-0.5 rounded-md">
                 Batch Mode
               </span>
             </h2>
-            <p className="text-[11px] text-neutral-400">
+            <p className="text-[11px] text-muted-foreground">
               Multi-file extraction • Shared storage referencing • Up to 20MB / file
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs font-semibold text-purple-300 bg-purple-950/40 border border-purple-800/50 px-3 py-1.5 rounded-full shadow-inner">
-            <Icons.Sparkles className="w-4 h-4 animate-pulse text-purple-400" />
+          <div className="flex items-center gap-2 text-xs font-semibold text-primary bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-full shadow-inner">
+            <Icons.Sparkles className="w-4 h-4 animate-pulse text-primary" />
             <span className="font-mono text-[11px] font-bold">AI Vision Engine</span>
           </div>
         </div>
@@ -1025,14 +1025,14 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
       <div className="flex-1 max-w-[1600px] mx-auto w-full p-4 sm:p-6 lg:p-8 flex flex-col lg:flex-row gap-6 items-start justify-center">
         {/* Mobile View Segmented Switcher (Visible on mobile screens when files are loaded) */}
         {uploadedFiles.length > 0 && (
-          <div className="lg:hidden w-full bg-neutral-900/95 p-1.5 rounded-2xl border border-neutral-800 grid grid-cols-2 gap-1.5 shadow-xl sticky top-[58px] z-20 backdrop-blur-md">
+          <div className="lg:hidden w-full bg-card/95 p-1.5 rounded-2xl border border-border grid grid-cols-2 gap-1.5 shadow-xl sticky top-[58px] z-20 backdrop-blur-md">
             <button
               type="button"
               onClick={() => setMobileTab('form')}
               className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 mobileTab === 'form'
-                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30 ring-1 ring-purple-400/40'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
               }`}
             >
               <Icons.FileText className="w-4 h-4" />
@@ -1043,8 +1043,8 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
               onClick={() => setMobileTab('preview')}
               className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 mobileTab === 'preview'
-                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30 ring-1 ring-purple-400/40'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
               }`}
             >
               <Icons.Eye className="w-4 h-4" />
@@ -1055,14 +1055,14 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
 
         {/* Left Side: Drag & Drop + File Queue + Studio Preview Frame */}
         <div className={`w-full lg:w-1/2 space-y-4 lg:sticky lg:top-20 ${uploadedFiles.length > 0 && mobileTab === 'form' ? 'hidden lg:block' : 'block'}`}>
-          <div className="bg-neutral-900/60 backdrop-blur-xl border border-neutral-800/80 rounded-3xl p-4 sm:p-5 shadow-xl space-y-4">
+          <div className="bg-card/60 backdrop-blur-xl border border-border rounded-3xl p-4 sm:p-5 shadow-xl space-y-4">
             {/* Header: Status & Quick Add */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-lg bg-purple-600/20 border border-purple-500/40 text-purple-300 flex items-center justify-center text-xs font-black">
+                <span className="w-6 h-6 rounded-lg bg-primary/15 border border-primary/25 text-primary flex items-center justify-center text-xs font-black">
                   1
                 </span>
-                <label className="block text-xs font-black uppercase tracking-wider text-neutral-300">
+                <label className="block text-xs font-black uppercase tracking-wider text-foreground">
                   {uploadedFiles.length > 0 ? 'Document Preview' : 'Select Document(s)'}
                 </label>
               </div>
@@ -1070,12 +1070,12 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                 {uploadedFiles.length > 0 && (
                   <label
                     htmlFor="multi-pdf-file-upload"
-                    className="text-purple-400 hover:text-purple-300 cursor-pointer font-bold text-xs flex items-center gap-1 bg-purple-950/40 border border-purple-800/40 px-2.5 py-1 rounded-lg hover:bg-purple-900/40 transition-colors"
+                    className="text-primary hover:text-primary/80 cursor-pointer font-bold text-xs flex items-center gap-1 bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-lg hover:bg-primary/20 transition-colors"
                   >
                     <Icons.Plus className="w-3.5 h-3.5" /> <span>Add More</span>
                   </label>
                 )}
-                <span className="text-[10px] font-mono text-neutral-400 bg-neutral-950 border border-neutral-800 px-2 py-0.5 rounded-md">
+                <span className="text-[10px] font-mono text-muted-foreground bg-muted/40 border border-border px-2 py-0.5 rounded-md">
                   PDF / PNG / JPG • Max 20MB
                 </span>
               </div>
@@ -1121,16 +1121,16 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                 onDrop={handleDrop}
                 className={`relative border-2 border-dashed rounded-2xl min-h-[460px] p-6 sm:p-8 flex flex-col items-center justify-center text-center transition-all duration-200 group ${
                   isDragging
-                    ? 'border-purple-400 bg-purple-950/40 ring-4 ring-purple-500/20 scale-[1.01]'
-                    : 'border-neutral-700/90 hover:border-purple-500/50 hover:bg-neutral-900/50 bg-neutral-950/40'
+                    ? 'border-primary bg-primary/10 ring-4 ring-primary/20 scale-[1.01]'
+                    : 'border-border hover:border-primary/50 hover:bg-secondary/40 bg-card/40'
                 }`}
               >
                 <div className="flex flex-col items-center py-2 max-w-md w-full">
                   <div
                     className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-all duration-200 ${
                       isDragging
-                        ? 'bg-purple-600 text-white scale-110 shadow-lg shadow-purple-600/50'
-                        : 'bg-neutral-800/90 border border-neutral-700/60 text-neutral-300 shadow-inner'
+                        ? 'bg-primary text-primary-foreground scale-110 shadow-lg'
+                        : 'bg-secondary border border-border text-secondary-foreground shadow-inner'
                     }`}
                   >
                     <Icons.Upload className="w-8 h-8" />
@@ -1139,7 +1139,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                   <h4 className="text-base sm:text-lg font-bold text-white mb-1.5">
                     {isDragging ? 'Release to scan files' : 'Upload Invoices, Challans & Ledgers'}
                   </h4>
-                  <p className="text-xs text-neutral-400 max-w-sm text-center leading-relaxed mb-6">
+                  <p className="text-xs text-muted-foreground max-w-sm text-center leading-relaxed mb-6">
                     Take a live photo on site or select PDFs and images from your device. Automated AI will extract and structure all document fields.
                   </p>
 
@@ -1147,7 +1147,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-sm mb-6">
                     <label
                       htmlFor="mobile-camera-capture"
-                      className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-95 text-white font-bold text-xs py-3 px-4 rounded-xl cursor-pointer shadow-lg shadow-purple-900/30 transition-all border border-purple-400/30"
+                      className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground font-bold text-xs py-3 px-4 rounded-xl cursor-pointer shadow-lg transition-all border border-border"
                     >
                       <Icons.Camera className="w-4 h-4" />
                       <span>Take Photo / Camera</span>
@@ -1155,7 +1155,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
 
                     <label
                       htmlFor="multi-pdf-file-upload"
-                      className="flex items-center justify-center gap-2 bg-neutral-800 hover:bg-neutral-700 active:scale-95 text-neutral-200 hover:text-white font-bold text-xs py-3 px-4 rounded-xl cursor-pointer border border-neutral-700 transition-all shadow-sm"
+                      className="flex items-center justify-center gap-2 bg-secondary hover:bg-accent active:scale-95 text-secondary-foreground hover:text-foreground font-bold text-xs py-3 px-4 rounded-xl cursor-pointer border border-border transition-all shadow-sm"
                     >
                       <Icons.Upload className="w-4 h-4" />
                       <span>Browse Files & PDFs</span>
@@ -1163,13 +1163,13 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                   </div>
 
                   <div className="flex flex-wrap items-center justify-center gap-2">
-                    <span className="text-[11px] font-mono text-neutral-400 bg-neutral-900 border border-neutral-800 px-3 py-1 rounded-full">
+                    <span className="text-[11px] font-mono text-muted-foreground bg-secondary/50 border border-border px-3 py-1 rounded-full">
                       ✓ Multi-file Batch
                     </span>
-                    <span className="text-[11px] font-mono text-neutral-400 bg-neutral-900 border border-neutral-800 px-3 py-1 rounded-full">
+                    <span className="text-[11px] font-mono text-muted-foreground bg-secondary/50 border border-border px-3 py-1 rounded-full">
                       ✓ Up to 20MB / file
                     </span>
-                    <span className="text-[11px] font-mono text-purple-300 bg-purple-950/40 border border-purple-800/40 px-3 py-1 rounded-full">
+                    <span className="text-[11px] font-mono text-primary bg-primary/10 border border-primary/20 px-3 py-1 rounded-full">
                       ✓ Instant Full Preview
                     </span>
                   </div>
@@ -1186,10 +1186,10 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
               >
                 {/* Drag over overlay when dragging more files onto the preview */}
                 {isDragging && (
-                  <div className="absolute inset-0 z-30 bg-purple-950/85 backdrop-blur-sm rounded-2xl border-2 border-dashed border-purple-400 flex flex-col items-center justify-center text-center p-6 animate-in fade-in duration-150">
-                    <Icons.Upload className="w-12 h-12 text-purple-300 animate-bounce mb-2" />
+                  <div className="absolute inset-0 z-30 bg-card/90 backdrop-blur-sm rounded-2xl border-2 border-dashed border-primary flex flex-col items-center justify-center text-center p-6 animate-in fade-in duration-150">
+                    <Icons.Upload className="w-12 h-12 text-primary animate-bounce mb-2" />
                     <h4 className="text-base font-bold text-white">Drop to add more files to queue</h4>
-                    <p className="text-xs text-purple-200 mt-1">Multi-page PDFs or images up to 20MB</p>
+                    <p className="text-xs text-muted-foreground mt-1">Multi-page PDFs or images up to 20MB</p>
                   </div>
                 )}
 
@@ -1209,14 +1209,14 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                         }}
                         className={`px-3 py-2 rounded-xl border flex items-center gap-2 transition-all cursor-pointer shrink-0 text-left ${
                           isSelected
-                            ? 'bg-purple-950/70 border-purple-500/80 text-white shadow-md ring-1 ring-purple-500/30'
-                            : 'bg-neutral-950/80 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700 hover:bg-neutral-900/80'
+                            ? 'bg-primary/15 border-primary/40 text-foreground shadow-sm ring-1 ring-primary/30'
+                            : 'bg-secondary/50 border-border text-muted-foreground hover:text-foreground hover:border-border hover:bg-secondary'
                         }`}
                         title={`Attachment #${idx + 1}: ${item.file.name} (Click to switch preview and scroll to its extracted data)`}
                       >
                         <span
                           className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold ${
-                            isSelected ? 'bg-purple-600 text-white' : 'bg-neutral-800 text-neutral-400'
+                            isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
                           }`}
                         >
                           #{idx + 1}
@@ -1226,7 +1226,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                         </div>
                         {fileInvoicesCount > 0 && (
                           <span
-                            className="text-[10px] font-mono text-purple-300 bg-purple-900/50 px-1.5 py-0.5 rounded font-bold"
+                            className="text-[10px] font-mono text-primary bg-primary/20 px-1.5 py-0.5 rounded font-bold"
                             title={`${fileInvoicesCount} record(s) extracted`}
                           >
                             {fileInvoicesCount}
@@ -1249,18 +1249,18 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
 
                 {/* Full-Height Document Preview Frame */}
                 {activeFile && (
-                  <div className="bg-neutral-950 rounded-2xl border border-neutral-800 overflow-hidden shadow-2xl flex flex-col">
+                  <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-2xl flex flex-col">
                     {/* Preview Toolbar */}
-                    <div className="bg-neutral-900/90 border-b border-neutral-800 px-4 py-2.5 flex items-center justify-between shrink-0 gap-2">
+                    <div className="bg-muted/50 border-b border-border px-4 py-2.5 flex items-center justify-between shrink-0 gap-2">
                       <div className="flex items-center gap-2 overflow-hidden">
-                        <Icons.File className="w-4 h-4 text-purple-400 shrink-0" />
-                        <span className="text-[11px] font-mono font-bold text-purple-300 bg-purple-950/80 border border-purple-800/60 px-2 py-0.5 rounded-md shrink-0">
+                        <Icons.File className="w-4 h-4 text-primary shrink-0" />
+                        <span className="text-[11px] font-mono font-bold text-primary bg-primary/15 border border-primary/25 px-2 py-0.5 rounded-md shrink-0">
                           Att. #{activeFileIndex + 1}
                         </span>
-                        <span className="text-xs font-bold text-neutral-200 truncate max-w-[180px] sm:max-w-[220px]">
+                        <span className="text-xs font-bold text-foreground truncate max-w-[180px] sm:max-w-[220px]">
                           {activeFile.file.name}
                         </span>
-                        <span className="text-[10px] font-mono text-neutral-400 bg-neutral-950 border border-neutral-800 px-2 py-0.5 rounded shrink-0 hidden sm:inline-block">
+                        <span className="text-[10px] font-mono text-muted-foreground bg-secondary border border-border px-2 py-0.5 rounded shrink-0 hidden sm:inline-block">
                           {formatFileSize(activeFile.fileSize)}
                         </span>
                       </div>
@@ -1268,24 +1268,24 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                       <div className="flex items-center gap-2 shrink-0">
                         {/* Prev / Next Attachment Navigation Buttons */}
                         {uploadedFiles.length > 1 && (
-                          <div className="flex items-center gap-1 bg-neutral-950 border border-neutral-800 rounded-xl p-0.5 shadow-inner">
+                          <div className="flex items-center gap-1 bg-secondary border border-border rounded-xl p-0.5 shadow-inner">
                             <button
                               type="button"
                               onClick={() => handleNavigateAttachment('prev')}
                               disabled={activeFileIndex <= 0}
-                              className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer"
+                              className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer"
                               title="Previous Attachment"
                             >
                               <Icons.ChevronLeft className="w-3.5 h-3.5" />
                             </button>
-                            <span className="text-[10px] font-mono font-bold text-neutral-300 px-1 whitespace-nowrap">
+                            <span className="text-[10px] font-mono font-bold text-secondary-foreground px-1 whitespace-nowrap">
                               {activeFileIndex + 1} / {uploadedFiles.length}
                             </span>
                             <button
                               type="button"
                               onClick={() => handleNavigateAttachment('next')}
                               disabled={activeFileIndex >= uploadedFiles.length - 1}
-                              className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer"
+                              className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:cursor-not-allowed transition-all cursor-pointer"
                               title="Next Attachment"
                             >
                               <Icons.ChevronRight className="w-3.5 h-3.5" />
@@ -1298,21 +1298,21 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                             href={activeFile.blobUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-neutral-300 hover:text-white bg-neutral-800 hover:bg-neutral-700 px-2.5 py-1 rounded-lg border border-neutral-700 transition-colors"
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-secondary-foreground hover:text-foreground bg-secondary hover:bg-accent px-2.5 py-1 rounded-lg border border-border transition-colors"
                             title="Open document in new browser tab"
                           >
                             <Icons.ExternalLink className="w-3.5 h-3.5" />
                             <span className="hidden sm:inline">Popout</span>
                           </a>
                         )}
-                        <span className="text-[10px] font-bold bg-purple-950 text-purple-300 border border-purple-800/60 px-2 py-0.5 rounded-md hidden md:inline-block">
+                        <span className="text-[10px] font-bold bg-primary/15 text-primary border border-primary/25 px-2 py-0.5 rounded-md hidden md:inline-block">
                           Live Full View
                         </span>
                       </div>
                     </div>
 
                     {/* Preview Canvas: Tall & Full */}
-                    <div className="h-[620px] sm:h-[680px] w-full relative flex items-center justify-center bg-neutral-950 overflow-hidden">
+                    <div className="h-[620px] sm:h-[680px] w-full relative flex items-center justify-center bg-background overflow-hidden">
                       {isActiveImage ? (
                         <div className="w-full h-full p-3 flex items-center justify-center overflow-auto custom-scrollbar">
                           <img
@@ -1324,15 +1324,15 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                       ) : (
                         <iframe
                           src={activeFile.blobUrl || activeFile.fileData || undefined}
-                          className="w-full h-full border-0 rounded-b-2xl bg-neutral-900"
+                          className="w-full h-full border-0 rounded-b-2xl bg-card"
                           title="Full Document Preview"
                         />
                       )}
                     </div>
 
                     {/* Mobile Return to Invoices Bar in Preview Mode */}
-                    <div className="lg:hidden p-3 bg-neutral-900 border-t border-neutral-800 flex items-center justify-between gap-2">
-                      <div className="text-xs text-neutral-300 truncate">
+                    <div className="lg:hidden p-3 bg-card border-t border-border flex items-center justify-between gap-2">
+                      <div className="text-xs text-muted-foreground truncate">
                         <span className="font-bold text-white">Att. #{activeFileIndex + 1}</span> ({invoices.filter((i) => i.fileId === activeFile.id).length} extracted)
                       </div>
                       <button
@@ -1341,7 +1341,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                           setMobileTab('form');
                           scrollToInvoiceForFile(activeFile.id);
                         }}
-                        className="inline-flex items-center gap-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-3 py-2 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer shrink-0"
+                        className="inline-flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold px-3 py-2 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer shrink-0"
                       >
                         <Icons.FileText className="w-3.5 h-3.5" />
                         <span>Back to Invoices ({invoices.length})</span>
@@ -1356,35 +1356,35 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
 
         {/* Right Side: Form & Live Progress / Error States */}
         <div className={`w-full lg:w-1/2 ${uploadedFiles.length > 0 && mobileTab === 'preview' ? 'hidden lg:block' : 'block'}`}>
-          <div className="bg-neutral-900/60 backdrop-blur-xl border border-neutral-800/80 rounded-3xl p-5 sm:p-7 shadow-xl relative overflow-hidden">
+          <div className="bg-card/60 backdrop-blur-xl border border-border rounded-3xl p-5 sm:p-7 shadow-xl relative overflow-hidden">
             {/* AI Scanning Active Overlay */}
             {isAiScanning && (
-              <div className="absolute inset-0 z-20 bg-neutral-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 animate-in fade-in duration-150">
-                <div className="w-16 h-16 rounded-3xl bg-purple-600/20 border border-purple-500/50 flex items-center justify-center mb-4 text-purple-400 animate-pulse shadow-lg">
+              <div className="absolute inset-0 z-20 bg-background/90 backdrop-blur-md flex flex-col items-center justify-center p-6 animate-in fade-in duration-150">
+                <div className="w-16 h-16 rounded-3xl bg-primary/15 border border-primary/25 flex items-center justify-center mb-4 text-primary animate-pulse shadow-lg">
                   <Icons.Sparkles className="w-8 h-8" />
                 </div>
                 <h3 className="text-base font-black text-white tracking-tight">
                   AI Vision is Analyzing...
                 </h3>
-                <p className="text-xs text-purple-300 mt-2 font-mono text-center max-w-sm bg-purple-950/60 border border-purple-800/40 px-3 py-1.5 rounded-full">
+                <p className="text-xs text-primary mt-2 font-mono text-center max-w-sm bg-primary/15 border border-primary/25 px-3 py-1.5 rounded-full">
                   {aiScanningStep}
                 </p>
-                <div className="w-56 h-1.5 bg-neutral-800 rounded-full mt-6 overflow-hidden">
-                  <div className="w-full h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-emerald-400 animate-pulse" />
+                <div className="w-56 h-1.5 bg-secondary rounded-full mt-6 overflow-hidden">
+                  <div className="w-full h-full bg-primary animate-pulse" />
                 </div>
               </div>
             )}
 
             {/* Uploading Multi-Stage Progress Overlay */}
             {uploadPhase === 'uploading' && (
-              <div className="absolute inset-0 z-30 bg-neutral-950/95 backdrop-blur-md flex flex-col items-center justify-center p-8 animate-in fade-in duration-200">
-                <div className="w-16 h-16 rounded-3xl bg-purple-600/20 border border-purple-500/60 flex items-center justify-center mb-5 text-purple-400 shadow-xl shadow-purple-950/50">
-                  <div className="w-8 h-8 border-3 border-purple-400 border-t-transparent rounded-full animate-spin" />
+              <div className="absolute inset-0 z-30 bg-background/95 backdrop-blur-md flex flex-col items-center justify-center p-8 animate-in fade-in duration-200">
+                <div className="w-16 h-16 rounded-3xl bg-primary/15 border border-primary/25 flex items-center justify-center mb-5 text-primary shadow-xl">
+                  <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
 
                 <div className="text-center space-y-1.5 mb-6 max-w-sm">
                   <h3 className="text-lg font-black text-white">Archiving Documents...</h3>
-                  <p className="text-xs text-neutral-400 font-mono">
+                  <p className="text-xs text-muted-foreground font-mono">
                     {uploadStatusText || 'Transferring document data...'}
                   </p>
                 </div>
@@ -1392,19 +1392,19 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                 {/* Animated Progress Bar */}
                 <div className="w-full max-w-md space-y-2">
                   <div className="flex justify-between text-xs font-mono font-bold">
-                    <span className="text-purple-400">Progress</span>
+                    <span className="text-primary font-bold">Progress</span>
                     <span className="text-white">{uploadProgress}%</span>
                   </div>
-                  <div className="w-full h-3 bg-neutral-800 rounded-full overflow-hidden p-0.5 border border-neutral-700">
+                  <div className="w-full h-3 bg-secondary rounded-full overflow-hidden p-0.5 border border-border">
                     <div
-                      className="h-full bg-gradient-to-r from-purple-600 via-indigo-500 to-emerald-400 rounded-full transition-all duration-300 ease-out shadow-sm"
+                      className="h-full bg-primary rounded-full transition-all duration-300 ease-out shadow-sm"
                       style={{ width: `${uploadProgress}%` }}
                     />
                   </div>
                 </div>
 
-                <div className="mt-6 flex items-center gap-2 text-[11px] text-neutral-400 font-mono">
-                  <Icons.File className="w-3.5 h-3.5 text-neutral-400" />
+                <div className="mt-6 flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
+                  <Icons.File className="w-3.5 h-3.5 text-muted-foreground" />
                   <span>
                     {uploadedFiles.length} file(s) • {invoices.length} invoice(s)
                   </span>
@@ -1414,7 +1414,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
 
             {/* Success Celebration Overlay */}
             {uploadPhase === 'success' && (
-              <div className="absolute inset-0 z-30 bg-neutral-950/95 backdrop-blur-md flex flex-col items-center justify-center p-8 animate-in zoom-in-95 duration-200 text-center">
+              <div className="absolute inset-0 z-30 bg-background/95 backdrop-blur-md flex flex-col items-center justify-center p-8 animate-in zoom-in-95 duration-200 text-center">
                 <div className="w-20 h-20 rounded-full bg-emerald-950 border-2 border-emerald-500 text-emerald-400 flex items-center justify-center mb-5 shadow-2xl shadow-emerald-950/60 animate-bounce">
                   <Icons.Check className="w-10 h-10 stroke-[3]" />
                 </div>
@@ -1424,24 +1424,24 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                     ? 'Document Uploaded Successfully!'
                     : `${createdDocRecords.length} Invoices Successfully Archived!`}
                 </h3>
-                <p className="text-xs text-neutral-400 max-w-sm mb-6 leading-relaxed">
+                <p className="text-xs text-muted-foreground max-w-sm mb-6 leading-relaxed">
                   All {uploadedFiles.length} file(s) and {createdDocRecords.length} invoice records have been securely stored and indexed to your dashboard.
                 </p>
 
                 {/* Summary List */}
-                <div className="w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-2xl p-4 text-left space-y-2 text-xs mb-6 max-h-48 overflow-y-auto custom-scrollbar">
+                <div className="w-full max-w-md bg-card border border-border rounded-2xl p-4 text-left space-y-2 text-xs mb-6 max-h-48 overflow-y-auto custom-scrollbar">
                   {createdDocRecords.map((doc, idx) => (
                     <div
                       key={doc.id}
-                      className="flex items-center justify-between py-1.5 border-b border-neutral-800/60 last:border-0"
+                      className="flex items-center justify-between py-1.5 border-b border-border last:border-0"
                     >
                       <div className="flex items-center gap-2 overflow-hidden">
-                        <span className="w-5 h-5 rounded-md bg-purple-950 text-purple-400 flex items-center justify-center text-[10px] font-bold">
+                        <span className="w-5 h-5 rounded-md bg-primary/15 text-primary flex items-center justify-center text-[10px] font-bold">
                           {idx + 1}
                         </span>
                         <div className="truncate">
                           <span className="font-bold text-white mr-1.5">{doc.vendorName}</span>
-                          <span className="font-mono text-purple-300">({doc.invoiceNumber})</span>
+                          <span className="font-mono text-muted-foreground">({doc.invoiceNumber})</span>
                         </div>
                       </div>
                       <span className="font-mono font-bold text-emerald-400 shrink-0">
@@ -1449,8 +1449,8 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                       </span>
                     </div>
                   ))}
-                  <div className="pt-2 flex justify-between font-bold text-xs border-t border-neutral-700">
-                    <span className="text-neutral-300">Combined Total:</span>
+                  <div className="pt-2 flex justify-between font-bold text-xs border-t border-border">
+                    <span className="text-muted-foreground">Combined Total:</span>
                     <span className="font-mono text-emerald-400">
                       {formatCurrency(totalCalculatedAmount)}
                     </span>
@@ -1459,7 +1459,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
 
                 <button
                   onClick={() => createdDocRecords.length > 0 && onUploadSuccess(createdDocRecords)}
-                  className="bg-white hover:bg-neutral-200 text-neutral-950 font-black text-xs py-3 px-6 rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs py-3 px-6 rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer"
                 >
                   View In Dashboard Now &rarr;
                 </button>
@@ -1491,14 +1491,14 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                   <button
                     type="button"
                     onClick={handleSaveOfflineFallback}
-                    className="bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-semibold text-xs px-3 py-1.5 rounded-lg transition-all cursor-pointer border border-neutral-700"
+                    className="bg-secondary hover:bg-accent text-secondary-foreground font-semibold text-xs px-3 py-1.5 rounded-lg transition-all cursor-pointer border border-border"
                   >
                     Save Draft Locally
                   </button>
                   <button
                     type="button"
                     onClick={() => setUploadPhase('idle')}
-                    className="text-neutral-400 hover:text-white text-xs px-2 py-1.5 ml-auto"
+                    className="text-muted-foreground hover:text-foreground text-xs px-2 py-1.5 ml-auto cursor-pointer"
                   >
                     Dismiss
                   </button>
@@ -1535,7 +1535,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                     type="button"
                     onClick={handleReScanAllFiles}
                     disabled={isAiScanning}
-                    className="bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black text-xs px-3.5 py-1.5 rounded-lg transition-all active:scale-95 flex items-center gap-1.5 shadow-md cursor-pointer disabled:opacity-50"
+                    className="bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs px-3.5 py-1.5 rounded-lg transition-all active:scale-95 flex items-center gap-1.5 shadow-md cursor-pointer disabled:opacity-50"
                   >
                     <Icons.Sparkles className="w-3.5 h-3.5" />
                     <span>Retry AI Extraction Now</span>
@@ -1543,7 +1543,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setAiExtractionError(null)}
-                    className="text-neutral-400 hover:text-white text-xs px-2 py-1.5 ml-auto cursor-pointer"
+                    className="text-muted-foreground hover:text-foreground text-xs px-2 py-1.5 ml-auto cursor-pointer"
                   >
                     Dismiss
                   </button>
@@ -1553,19 +1553,19 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
 
             {/* Active Session Draft Restored Banner */}
             {isDraftRestored && (
-              <div className="mb-5 bg-gradient-to-r from-purple-950/70 to-indigo-950/60 border border-purple-500/50 rounded-2xl p-4 shadow-lg flex items-center justify-between gap-3 animate-in fade-in">
+              <div className="mb-5 bg-primary/10 border border-primary/30 rounded-2xl p-4 shadow-lg flex items-center justify-between gap-3 animate-in fade-in">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-purple-600/30 border border-purple-500/60 flex items-center justify-center shrink-0 text-purple-300">
+                  <div className="w-8 h-8 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0 text-primary">
                     <Icons.Check className="w-4 h-4" />
                   </div>
                   <div>
                     <h4 className="text-xs font-black text-white flex items-center gap-2">
                       <span>Session Review Draft Restored</span>
-                      <span className="text-[10px] font-mono text-purple-300 bg-purple-900/60 border border-purple-700/60 px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-mono text-primary bg-primary/20 border border-primary/30 px-2 py-0.5 rounded-full">
                         {invoices.length} record(s)
                       </span>
                     </h4>
-                    <p className="text-[11px] text-purple-200/90 mt-0.5">
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
                       We automatically preserved your unsubmitted invoice review data so your progress was not lost.
                     </p>
                   </div>
@@ -1579,7 +1579,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                       setUploadedFiles([]);
                       setActiveFileId(null);
                     }}
-                    className="text-[11px] text-neutral-400 hover:text-rose-400 bg-neutral-900 hover:bg-rose-950/40 border border-neutral-800 hover:border-rose-800/60 px-3 py-1.5 rounded-xl transition-all cursor-pointer font-bold"
+                    className="text-[11px] text-muted-foreground hover:text-destructive bg-card hover:bg-destructive/15 border border-border hover:border-destructive/30 px-3 py-1.5 rounded-xl transition-all cursor-pointer font-bold"
                     title="Clear this draft and start a fresh upload"
                   >
                     Discard Draft
@@ -1587,7 +1587,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsDraftRestored(false)}
-                    className="text-neutral-400 hover:text-white text-xs px-2 py-1.5 cursor-pointer"
+                    className="text-muted-foreground hover:text-foreground text-xs px-2 py-1.5 cursor-pointer"
                   >
                     Dismiss
                   </button>
@@ -1598,14 +1598,14 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
             {/* Form Header */}
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-300 flex items-center justify-center text-xs font-black">
+                <span className="w-6 h-6 rounded-lg bg-secondary border border-border text-secondary-foreground flex items-center justify-center text-xs font-black">
                   2
                 </span>
                 <div>
-                  <h3 className="text-xs font-black uppercase tracking-wider text-neutral-300">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
                     Document Specifications
                   </h3>
-                  <p className="text-[11px] text-neutral-400">
+                  <p className="text-[11px] text-muted-foreground">
                     {invoices.length > 0
                       ? `${invoices.length} invoice(s) across ${uploadedFiles.length} file(s).`
                       : 'Upload files to extract and review invoice details.'}
@@ -1618,10 +1618,10 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                     type="button"
                     onClick={handleReScanAllFiles}
                     disabled={isAiScanning}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-300 hover:text-white bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 px-2.5 py-1 rounded-full border border-neutral-700 transition-all cursor-pointer active:scale-95"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-secondary-foreground hover:text-foreground bg-secondary hover:bg-accent disabled:opacity-50 px-2.5 py-1 rounded-full border border-border transition-all cursor-pointer active:scale-95"
                     title="Re-run AI extraction"
                   >
-                    <Icons.Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                    <Icons.Sparkles className="w-3.5 h-3.5 text-primary" />
                     <span>Re-scan AI</span>
                   </button>
                 )}
@@ -1642,8 +1642,8 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
             ) : (
               <form onSubmit={handleFormSubmit} className="space-y-5">
                 {/* Global Site Selector */}
-                <div className="bg-neutral-950/60 border border-neutral-800/80 p-3.5 rounded-2xl">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
+                <div className="bg-muted/40 border border-border p-3.5 rounded-2xl">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                     Assigned Construction Site *
                   </label>
                   <select
@@ -1655,7 +1655,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                         onSiteChange(newSiteId);
                       }
                     }}
-                    className="w-full bg-neutral-900 border border-neutral-700/80 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none transition-colors"
+                    className="w-full bg-background border border-input focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2.5 text-sm text-foreground focus:outline-none transition-colors"
                   >
                     {sites.map((s) => (
                       <option key={s.id} value={s.id}>
@@ -1667,10 +1667,10 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
 
                 {/* Multi-Invoice Cards List */}
                 {invoices.length === 0 ? (
-                  <div className="border border-dashed border-neutral-800 rounded-2xl p-8 text-center text-neutral-500 text-xs space-y-2">
-                    <Icons.File className="w-8 h-8 mx-auto text-neutral-600" />
+                  <div className="border border-dashed border-border rounded-2xl p-8 text-center text-muted-foreground text-xs space-y-2">
+                    <Icons.File className="w-8 h-8 mx-auto text-muted-foreground" />
                     <div>No documents scanned yet.</div>
-                    <p className="text-[11px] text-neutral-500 max-w-xs mx-auto">
+                    <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
                       Drop your invoices or delivery challans on the left panel to begin.
                     </p>
                   </div>
@@ -1704,17 +1704,17 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                           }}
                           className={`rounded-2xl p-4 sm:p-5 space-y-4 relative shadow-sm transition-all duration-200 cursor-pointer ${
                             isCardActive
-                              ? 'bg-neutral-900/90 border border-purple-500/80 ring-2 ring-purple-500/30 shadow-lg shadow-purple-950/40'
-                              : 'bg-neutral-950/80 border border-neutral-800/90 hover:border-neutral-700'
+                              ? 'bg-card border border-primary/70 ring-2 ring-primary/20 shadow-lg'
+                              : 'bg-card/70 border border-border hover:border-border/80'
                           }`}
                         >
                           {/* Invoice Item Header */}
-                          <div className="flex items-center justify-between pb-3 border-b border-neutral-800/80 gap-2 flex-wrap sm:flex-nowrap">
+                          <div className="flex items-center justify-between pb-3 border-b border-border gap-2 flex-wrap sm:flex-nowrap">
                             <div className="flex items-center gap-2 overflow-hidden flex-wrap sm:flex-nowrap">
                               <span
                                 className={`w-6 h-6 rounded-lg border flex items-center justify-center text-xs font-black shrink-0 ${
                                   inv.type === 'Invoice'
-                                    ? 'bg-purple-600/30 border-purple-500/40 text-purple-300'
+                                    ? 'bg-primary/20 border-primary/30 text-primary'
                                     : inv.type === 'Challan'
                                     ? 'bg-indigo-600/30 border-indigo-500/40 text-indigo-300'
                                     : inv.type === 'Credit Note'
@@ -1747,8 +1747,8 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                                 <span
                                   className={`text-[10px] font-mono px-2 py-0.5 rounded-md truncate max-w-[140px] flex items-center gap-1 border transition-all ${
                                     isCardActive
-                                      ? 'bg-purple-900/60 text-purple-200 border-purple-600/60 font-bold'
-                                      : 'bg-neutral-900 text-neutral-400 border-neutral-800'
+                                      ? 'bg-primary/20 text-primary border-primary/30 font-bold'
+                                      : 'bg-secondary text-muted-foreground border-border'
                                   }`}
                                   title={`Attachment #${fileIdx + 1}: ${sourceFile.file.name}`}
                                 >
@@ -1759,7 +1759,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                               )}
 
                               {inv.pageNumber && (
-                                <span className="text-[10px] font-mono text-neutral-400 bg-neutral-900 border border-neutral-800 px-2 py-0.5 rounded-md shrink-0">
+                                <span className="text-[10px] font-mono text-muted-foreground bg-secondary border border-border px-2 py-0.5 rounded-md shrink-0">
                                   p.{inv.pageNumber}
                                 </span>
                               )}
@@ -1774,7 +1774,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                                     e.stopPropagation();
                                     setMobileTab('preview');
                                   }}
-                                  className="text-[10px] font-bold bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm shadow-purple-900/40 cursor-pointer active:scale-95 transition-all"
+                                  className="text-[10px] font-bold bg-primary hover:bg-primary/90 text-primary-foreground px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm cursor-pointer active:scale-95 transition-all"
                                   title="View this document in full preview"
                                 >
                                   <Icons.Eye className="w-3 h-3" />
@@ -1788,10 +1788,10 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                                     setActiveFileId(inv.fileId);
                                     setMobileTab('preview');
                                   }}
-                                  className="text-[10px] font-semibold text-neutral-300 hover:text-purple-300 bg-neutral-900 hover:bg-purple-950/60 px-2 py-1 rounded-lg border border-neutral-800 hover:border-purple-800/50 transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                                  className="text-[10px] font-semibold text-secondary-foreground hover:text-foreground bg-secondary hover:bg-accent px-2 py-1 rounded-lg border border-border transition-all flex items-center gap-1 cursor-pointer active:scale-95"
                                   title="Switch preview to this attachment"
                                 >
-                                  <Icons.Eye className="w-3 h-3 text-purple-400" />
+                                  <Icons.Eye className="w-3 h-3 text-primary" />
                                   <span className="hidden sm:inline">View Att. #{fileIdx + 1}</span>
                                   <span className="sm:hidden">View Doc</span>
                                 </button>
@@ -1803,7 +1803,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                                   e.stopPropagation();
                                   handleDuplicateInvoice(inv.id);
                                 }}
-                                className="text-[11px] text-purple-300 hover:text-white bg-purple-950/50 hover:bg-purple-900/60 px-2 py-1 rounded-lg border border-purple-800/40 transition-all flex items-center gap-1 cursor-pointer"
+                                className="text-[11px] text-secondary-foreground hover:text-foreground bg-secondary hover:bg-accent px-2 py-1 rounded-lg border border-border transition-all flex items-center gap-1 cursor-pointer"
                                 title="Duplicate this invoice specification"
                               >
                                 <Icons.Plus className="w-3 h-3" />
@@ -1829,7 +1829,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                           {/* Fields */}
                           <div className="space-y-3.5">
                             <div>
-                              <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
+                              <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
                                 {inv.type === 'Ledger'
                                   ? 'Account / Vendor Name *'
                                   : 'Vendor / Supplier Name *'}
@@ -1842,13 +1842,13 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                                 onChange={(e) =>
                                   handleUpdateInvoice(index, 'vendorName', e.target.value)
                                 }
-                                className="w-full bg-neutral-900/90 border border-neutral-700/80 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 rounded-xl px-3.5 py-2 text-sm text-white placeholder:text-neutral-600 focus:outline-none transition-colors"
+                                className="w-full bg-background border border-input focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors"
                               />
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
-                                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
+                                <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
                                   {inv.type === 'Ledger'
                                     ? 'Ledger Period / Date Range *'
                                     : inv.type === 'Credit Note'
@@ -1872,36 +1872,36 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                                   onChange={(e) =>
                                     handleUpdateInvoice(index, 'invoiceNumber', e.target.value)
                                   }
-                                  className="w-full bg-neutral-900/90 border border-neutral-700/80 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 rounded-xl px-3.5 py-2 text-sm text-white font-mono focus:outline-none transition-colors"
+                                  className="w-full bg-background border border-input focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2 text-sm text-foreground font-mono focus:outline-none transition-colors"
                                 />
                               </div>
                               <div>
-                                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
+                                <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
                                   {inv.type === 'Ledger' ? 'Statement Date' : 'Issue Date'}
                                 </label>
                                 <input
                                   type="date"
                                   value={inv.date}
                                   onChange={(e) => handleUpdateInvoice(index, 'date', e.target.value)}
-                                  className="w-full bg-neutral-900/90 border border-neutral-700/80 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 rounded-xl px-3.5 py-2 text-sm text-white font-mono focus:outline-none transition-colors"
+                                  className="w-full bg-background border border-input focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2 text-sm text-foreground font-mono focus:outline-none transition-colors"
                                 />
                               </div>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
-                                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
+                                <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
                                   Document Type
                                 </label>
                                 {/* Segmented Toggle for Document Type */}
-                                <div className="grid grid-cols-2 sm:grid-cols-4 p-1 bg-neutral-900 rounded-xl border border-neutral-700/80 gap-1">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 p-1 bg-muted rounded-xl border border-input gap-1">
                                   <button
                                     type="button"
                                     onClick={() => handleUpdateInvoice(index, 'type', 'Invoice')}
                                     className={`py-1.5 px-2 text-[11px] font-bold rounded-lg transition-all cursor-pointer truncate ${
                                       inv.type === 'Invoice'
-                                        ? 'bg-purple-600 text-white shadow-sm'
-                                        : 'text-neutral-400 hover:text-neutral-200'
+                                        ? 'bg-primary text-primary-foreground shadow-sm'
+                                        : 'text-muted-foreground hover:text-foreground'
                                     }`}
                                   >
                                     Tax Invoice
@@ -1911,8 +1911,8 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                                     onClick={() => handleUpdateInvoice(index, 'type', 'Challan')}
                                     className={`py-1.5 px-2 text-[11px] font-bold rounded-lg transition-all cursor-pointer truncate ${
                                       inv.type === 'Challan'
-                                        ? 'bg-indigo-600 text-white shadow-sm'
-                                        : 'text-neutral-400 hover:text-neutral-200'
+                                        ? 'bg-primary text-primary-foreground shadow-sm'
+                                        : 'text-muted-foreground hover:text-foreground'
                                     }`}
                                   >
                                     Challan
@@ -1922,8 +1922,8 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                                     onClick={() => handleUpdateInvoice(index, 'type', 'Credit Note')}
                                     className={`py-1.5 px-2 text-[11px] font-bold rounded-lg transition-all cursor-pointer truncate ${
                                       inv.type === 'Credit Note'
-                                        ? 'bg-rose-600 text-white shadow-sm'
-                                        : 'text-neutral-400 hover:text-neutral-200'
+                                        ? 'bg-destructive text-destructive-foreground shadow-sm'
+                                        : 'text-muted-foreground hover:text-foreground'
                                     }`}
                                   >
                                     Credit Note
@@ -1933,8 +1933,8 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                                     onClick={() => handleUpdateInvoice(index, 'type', 'Ledger')}
                                     className={`py-1.5 px-2 text-[11px] font-bold rounded-lg transition-all cursor-pointer truncate ${
                                       inv.type === 'Ledger'
-                                        ? 'bg-sky-600 text-white shadow-sm'
-                                        : 'text-neutral-400 hover:text-neutral-200'
+                                        ? 'bg-secondary text-secondary-foreground shadow-sm'
+                                        : 'text-muted-foreground hover:text-foreground'
                                     }`}
                                   >
                                     Ledger
@@ -1942,7 +1942,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                                 </div>
                               </div>
                               <div>
-                                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
+                                <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
                                   {inv.type === 'Ledger'
                                     ? 'Closing / Net Balance (₹) *'
                                     : inv.type === 'Credit Note'
@@ -1950,7 +1950,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                                     : 'Total Amount (₹) *'}
                                 </label>
                                 <div className="relative">
-                                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-neutral-400">
+                                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">
                                     ₹
                                   </span>
                                   <input
@@ -1962,18 +1962,18 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                                     onChange={(e) =>
                                       handleUpdateInvoice(index, 'amount', e.target.value)
                                     }
-                                    className="w-full bg-neutral-900/90 border border-neutral-700/80 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl pl-8 pr-3.5 py-2 text-sm text-emerald-400 font-mono font-bold focus:outline-none transition-colors"
+                                    className="w-full bg-background border border-input focus:ring-1 focus:ring-ring rounded-xl pl-8 pr-3.5 py-2 text-sm text-emerald-400 font-mono font-bold focus:outline-none transition-colors"
                                   />
                                 </div>
                                 {inv.type === 'Invoice' && (
                                   <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-                                    <span className="text-[10px] text-neutral-500 font-semibold mr-1">GST Helper:</span>
+                                    <span className="text-[10px] text-muted-foreground font-semibold mr-1">GST Helper:</span>
                                     {[5, 12, 18, 28].map((pct) => (
                                       <button
                                         key={pct}
                                         type="button"
                                         onClick={() => applyGstRate(index, pct)}
-                                        className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-purple-300 border border-neutral-800 hover:border-purple-800/60 transition-colors cursor-pointer"
+                                        className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-secondary hover:bg-accent text-secondary-foreground hover:text-primary border border-border transition-colors cursor-pointer"
                                         title={`Add ${pct}% GST to current value`}
                                       >
                                         +{pct}%
@@ -1985,8 +1985,8 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                             </div>
 
                             {inv.notes && (
-                              <div className="text-[11px] text-neutral-400 bg-neutral-900/60 p-2.5 rounded-xl border border-neutral-800">
-                                <span className="font-semibold text-neutral-300">Items / Notes:</span>{' '}
+                              <div className="text-[11px] text-muted-foreground bg-muted/40 p-2.5 rounded-xl border border-border">
+                                <span className="font-semibold text-foreground">Items / Notes:</span>{' '}
                                 {inv.notes}
                               </div>
                             )}
@@ -2003,14 +2003,14 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                     <button
                       type="button"
                       onClick={() => handleAddInvoiceForFile(activeFile?.id || uploadedFiles[0].id)}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-400 hover:text-purple-300 bg-purple-950/40 hover:bg-purple-950/70 border border-purple-800/40 px-3.5 py-2 rounded-xl transition-all cursor-pointer active:scale-95"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/20 border border-primary/20 px-3.5 py-2 rounded-xl transition-all cursor-pointer active:scale-95"
                     >
                       <Icons.Plus className="w-4 h-4" />
                       <span>+ Add Another Invoice Item</span>
                     </button>
 
                     <div className="text-right">
-                      <span className="text-[11px] text-neutral-400 block font-medium">
+                      <span className="text-[11px] text-muted-foreground block font-medium">
                         Total Invoices: {invoices.length}
                       </span>
                       <span className="text-sm font-mono font-black text-emerald-400">
@@ -2021,11 +2021,11 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                 )}
 
                 {/* Form Action Submit / Cancel */}
-                <div className="pt-4 flex gap-3 border-t border-neutral-800/80">
+                <div className="pt-4 flex gap-3 border-t border-border">
                   <button
                     type="submit"
                     disabled={uploadPhase === 'uploading' || invoices.length === 0}
-                    className={`flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-95 text-white font-black text-sm py-3.5 px-4 rounded-xl transition-all shadow-lg shadow-purple-900/30 flex items-center justify-center gap-2 cursor-pointer ${
+                    className={`flex-1 bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground font-black text-sm py-3.5 px-4 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer ${
                       uploadPhase === 'uploading' || invoices.length === 0
                         ? 'opacity-70 cursor-not-allowed'
                         : ''
@@ -2046,7 +2046,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                     type="button"
                     disabled={uploadPhase === 'uploading'}
                     onClick={handleCancelClick}
-                    className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold text-xs py-3.5 px-5 rounded-xl active:scale-95 transition-all cursor-pointer border border-neutral-700/60"
+                    className="bg-secondary hover:bg-accent text-secondary-foreground font-bold text-xs py-3.5 px-5 rounded-xl active:scale-95 transition-all cursor-pointer border border-border"
                   >
                     Cancel
                   </button>

@@ -258,65 +258,65 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[70] bg-neutral-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-[70] bg-background/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150">
+      <div className="bg-card border border-border rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Modal Header */}
-        <div className="p-6 border-b border-neutral-800 flex items-center justify-between">
+        <div className="p-6 border-b border-border flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-purple-950/80 border border-purple-800/80 text-purple-400 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-secondary border border-border text-primary flex items-center justify-center">
               <Icons.Shield className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">Admin Management Hub</h2>
-              <p className="text-xs text-neutral-400">Manage portal users, construction sites, and cloud database sync</p>
+              <h2 className="text-base font-bold text-foreground">Admin Management Hub</h2>
+              <p className="text-xs text-muted-foreground">Manage portal users, construction sites, and cloud database sync</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-neutral-400 hover:text-white p-2 rounded-xl hover:bg-neutral-800 active:scale-95 transition-all"
+            className="text-muted-foreground hover:text-foreground p-2 rounded-xl hover:bg-secondary active:scale-95 transition-all cursor-pointer"
           >
             ✕
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-neutral-800 bg-neutral-950/50 p-2 gap-2">
+        <div className="flex border-b border-border bg-muted/20 p-2 gap-2">
           <button
             onClick={() => setTab('create-user')}
-            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
+            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               tab === 'create-user'
-                ? 'bg-neutral-800 text-white shadow-sm'
-                : 'text-neutral-400 hover:text-white'
+                ? 'bg-secondary text-secondary-foreground border border-border shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Create User
           </button>
           <button
             onClick={() => setTab('create-site')}
-            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
+            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               tab === 'create-site'
-                ? 'bg-neutral-800 text-white shadow-sm'
-                : 'text-neutral-400 hover:text-white'
+                ? 'bg-secondary text-secondary-foreground border border-border shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Sites ({sites.length})
           </button>
           <button
             onClick={() => setTab('manage-assignments')}
-            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
+            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               tab === 'manage-assignments'
-                ? 'bg-neutral-800 text-white shadow-sm'
-                : 'text-neutral-400 hover:text-white'
+                ? 'bg-secondary text-secondary-foreground border border-border shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Manage Users ({users.length})
           </button>
           <button
             onClick={() => setTab('cloud-sync')}
-            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               tab === 'cloud-sync'
-                ? 'bg-purple-950 text-purple-300 border border-purple-800 shadow-sm'
-                : 'text-neutral-400 hover:text-white'
+                ? 'bg-secondary text-secondary-foreground border border-border shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             <span>Cloud Database Sync</span>
@@ -328,20 +328,20 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
           {tab === 'create-user' && (
             <form onSubmit={handleCreateUser} className="space-y-4">
               {userSuccess && (
-                <div className="p-3 bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 text-xs rounded-2xl flex items-center gap-2">
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs rounded-2xl flex items-center gap-2">
                   <Icons.Check className="w-4 h-4 text-emerald-400" />
                   <span>{userSuccess}</span>
                 </div>
               )}
               {userError && (
-                <div className="p-3 bg-rose-950/60 border border-rose-800/60 text-rose-300 text-xs rounded-2xl flex items-center gap-2">
-                  <Icons.AlertTriangle className="w-4 h-4 text-rose-400" />
+                <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive text-xs rounded-2xl flex items-center gap-2">
+                  <Icons.AlertTriangle className="w-4 h-4 text-destructive" />
                   <span>{userError}</span>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Full Name *
                 </label>
                 <input
@@ -350,12 +350,12 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
                   placeholder="e.g. Sarah Connor"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white transition-colors"
+                  className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2.5 text-sm text-foreground focus:outline-none transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Email Address *
                 </label>
                 <input
@@ -364,12 +364,12 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
                   placeholder="sarah@sitedocs.com"
                   value={userEmail}
                   onChange={(e) => setUserEmail(e.target.value)}
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white transition-colors"
+                  className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2.5 text-sm text-foreground focus:outline-none transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Password *
                 </label>
                 <input
@@ -378,19 +378,19 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
                   placeholder="••••••••"
                   value={userPassword}
                   onChange={(e) => setUserPassword(e.target.value)}
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white transition-colors"
+                  className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2.5 text-sm text-foreground focus:outline-none transition-colors"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                     Role *
                   </label>
                   <select
                     value={userRole}
                     onChange={(e) => setUserRole(e.target.value as Role)}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white transition-colors"
+                    className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2.5 text-sm text-foreground focus:outline-none transition-colors"
                   >
                     <option value="Site Accountant">Site Accountant</option>
                     <option value="Checker">Checker (Auditor)</option>
@@ -400,13 +400,13 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
 
                 {userRole === 'Site Accountant' && (
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                       Assigned Site *
                     </label>
                     <select
                       value={userSiteId}
                       onChange={(e) => setUserSiteId(e.target.value)}
-                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white transition-colors"
+                      className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2.5 text-sm text-foreground focus:outline-none transition-colors"
                     >
                       {sites.map((s) => (
                         <option key={s.id} value={s.id}>
@@ -421,7 +421,7 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full bg-white hover:bg-neutral-200 active:scale-95 text-neutral-950 font-black text-xs py-3 rounded-xl transition-all shadow-lg"
+                  className="w-full bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground font-bold text-xs py-3 rounded-xl transition-all shadow-sm cursor-pointer"
                 >
                   Create User Account & Sync
                 </button>
@@ -431,17 +431,17 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
 
           {tab === 'create-site' && (
             <div className="space-y-6">
-              <form onSubmit={handleCreateSite} className="space-y-4 bg-neutral-950/60 p-4 rounded-2xl border border-neutral-800">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-300">Add New Site</h4>
+              <form onSubmit={handleCreateSite} className="space-y-4 bg-muted/20 p-4 rounded-2xl border border-border">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Add New Site</h4>
                 {siteSuccess && (
-                  <div className="p-3 bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 text-xs rounded-2xl flex items-center gap-2">
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs rounded-2xl flex items-center gap-2">
                     <Icons.Check className="w-4 h-4 text-emerald-400" />
                     <span>{siteSuccess}</span>
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                     Site Name *
                   </label>
                   <input
@@ -450,13 +450,13 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
                     placeholder="e.g. Metro Line Phase 4"
                     value={siteName}
                     onChange={(e) => setSiteName(e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white transition-colors"
+                    className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2.5 text-sm text-foreground focus:outline-none transition-colors"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                       Site Code *
                     </label>
                     <input
@@ -465,11 +465,11 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
                       placeholder="e.g. MLP4"
                       value={siteCode}
                       onChange={(e) => setSiteCode(e.target.value)}
-                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono uppercase focus:outline-none focus:border-white transition-colors"
+                      className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2.5 text-sm text-foreground font-mono uppercase focus:outline-none transition-colors"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                       Location / Sector
                     </label>
                     <input
@@ -477,14 +477,14 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
                       placeholder="e.g. Downtown Central"
                       value={siteLocation}
                       onChange={(e) => setSiteLocation(e.target.value)}
-                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white transition-colors"
+                      className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2.5 text-sm text-foreground focus:outline-none transition-colors"
                     />
                   </div>
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full bg-white hover:bg-neutral-200 active:scale-95 text-neutral-950 font-black text-xs py-2.5 rounded-xl transition-all shadow-md"
+                  className="w-full bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground font-bold text-xs py-2.5 rounded-xl transition-all shadow-sm cursor-pointer"
                 >
                   Create Construction Site & Sync
                 </button>
@@ -492,25 +492,25 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
 
               {/* Existing Sites List with Delete option */}
               <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400">Existing Construction Sites</h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Existing Construction Sites</h4>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                   {sites.map((s) => (
                     <div
                       key={s.id}
-                      className="flex items-center justify-between bg-neutral-950 border border-neutral-800 p-3 rounded-xl"
+                      className="flex items-center justify-between bg-muted/20 border border-border p-3 rounded-xl"
                     >
                       <div>
-                        <div className="text-xs font-bold text-white flex items-center gap-2">
+                        <div className="text-xs font-bold text-foreground flex items-center gap-2">
                           <span>{s.name}</span>
-                          <span className="font-mono text-[10px] bg-neutral-800 px-1.5 py-0.5 rounded text-neutral-300">
+                          <span className="font-mono text-[10px] bg-secondary border border-border px-1.5 py-0.5 rounded text-secondary-foreground">
                             {s.code}
                           </span>
                         </div>
-                        <div className="text-[11px] text-neutral-500">{s.location}</div>
+                        <div className="text-[11px] text-muted-foreground">{s.location}</div>
                       </div>
                       <button
                         onClick={() => handleDeleteSite(s.id, s.name)}
-                        className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg transition-all"
+                        className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg transition-all cursor-pointer"
                         title="Delete Site"
                       >
                         <Icons.Trash className="w-4 h-4" />
@@ -524,23 +524,23 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
 
           {tab === 'manage-assignments' && (
             <div className="space-y-6">
-              <form onSubmit={handleSaveAssignment} className="space-y-4 bg-neutral-950/60 p-4 rounded-2xl border border-neutral-800">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-300">Update User Role / Site</h4>
+              <form onSubmit={handleSaveAssignment} className="space-y-4 bg-muted/20 p-4 rounded-2xl border border-border">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Update User Role / Site</h4>
                 {assignmentSuccess && (
-                  <div className="p-3 bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 text-xs rounded-2xl flex items-center gap-2">
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs rounded-2xl flex items-center gap-2">
                     <Icons.Check className="w-4 h-4 text-emerald-400" />
                     <span>{assignmentSuccess}</span>
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                     Select User to Configure
                   </label>
                   <select
                     value={selectedUserId}
                     onChange={(e) => handleSelectUserForEdit(e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white transition-colors"
+                    className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2.5 text-sm text-foreground focus:outline-none transition-colors"
                   >
                     {users.map((u) => (
                       <option key={u.id} value={u.id}>
@@ -552,13 +552,13 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                       Assigned Role
                     </label>
                     <select
                       value={editRole}
                       onChange={(e) => setEditRole(e.target.value as Role)}
-                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white transition-colors"
+                      className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2.5 text-sm text-foreground focus:outline-none transition-colors"
                     >
                       <option value="Site Accountant">Site Accountant</option>
                       <option value="Checker">Checker (Auditor)</option>
@@ -567,14 +567,14 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                       Site Permission Scope
                     </label>
                     <select
                       disabled={editRole === 'Admin'}
                       value={editSiteId}
                       onChange={(e) => setEditSiteId(e.target.value)}
-                      className={`w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white transition-colors ${
+                      className={`w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2.5 text-sm text-foreground focus:outline-none transition-colors ${
                         editRole === 'Admin' ? 'opacity-60 cursor-not-allowed' : ''
                       }`}
                     >
@@ -590,7 +590,7 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
 
                 <button
                   type="submit"
-                  className="w-full bg-white hover:bg-neutral-200 active:scale-95 text-neutral-950 font-black text-xs py-2.5 rounded-xl transition-all shadow-md"
+                  className="w-full bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground font-bold text-xs py-2.5 rounded-xl transition-all shadow-sm cursor-pointer"
                 >
                   Save Role & Assignment
                 </button>
@@ -598,35 +598,35 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
 
               {/* Existing Users List with Delete User option */}
               <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400">All Portal Users</h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">All Portal Users</h4>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                   {users.map((u) => (
                     <div
                       key={u.id}
-                      className="flex items-center justify-between bg-neutral-950 border border-neutral-800 p-3 rounded-xl"
+                      className="flex items-center justify-between bg-muted/20 border border-border p-3 rounded-xl"
                     >
                       <div>
-                        <div className="text-xs font-bold text-white flex items-center gap-2">
+                        <div className="text-xs font-bold text-foreground flex items-center gap-2">
                           <span>{u.name}</span>
                           <span
-                            className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                            className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border ${
                               u.role === 'Admin'
-                                ? 'bg-purple-950 text-purple-300'
+                                ? 'bg-secondary text-secondary-foreground border-border'
                                 : u.role === 'Checker'
-                                ? 'bg-emerald-950 text-emerald-300'
-                                : 'bg-neutral-800 text-neutral-300'
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                : 'bg-secondary text-secondary-foreground border-border'
                             }`}
                           >
                             {u.role}
                           </span>
                         </div>
-                        <div className="text-[11px] text-neutral-500 font-mono">{u.email}</div>
+                        <div className="text-[11px] text-muted-foreground font-mono">{u.email}</div>
                       </div>
 
                       {u.id !== currentUser.id && (
                         <button
                           onClick={() => handleDeleteUser(u.id, u.name)}
-                          className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg transition-all"
+                          className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg transition-all cursor-pointer"
                           title="Delete User"
                         >
                           <Icons.Trash className="w-4 h-4" />
@@ -641,27 +641,27 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
 
           {tab === 'cloud-sync' && (
             <div className="space-y-5">
-              <div className="p-4 bg-neutral-950/80 border border-neutral-800 rounded-2xl space-y-2">
+              <div className="p-4 bg-muted/20 border border-border rounded-2xl space-y-2">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-300">Cloud Database Connection</h4>
-                  <span className="text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Cloud Database Connection</h4>
+                  <span className="text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded">
                     ONLINE & SECURE
                   </span>
                 </div>
-                <p className="text-xs text-neutral-400 font-mono">
+                <p className="text-xs text-muted-foreground font-mono">
                   Real-time synchronization active • SSL Encrypted
                 </p>
               </div>
 
               {syncStatus && (
-                <div className="p-3 bg-purple-950/40 border border-purple-800/40 rounded-xl text-purple-300 text-xs flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+                <div className="p-3 bg-secondary border border-border rounded-xl text-foreground text-xs flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                   <span>{syncStatus}</span>
                 </div>
               )}
 
               <div className="space-y-3">
-                <p className="text-xs text-neutral-400">
+                <p className="text-xs text-muted-foreground">
                   Click the button below to push all local construction sites, profiles, and document metadata records to your secure cloud database.
                 </p>
 
@@ -669,11 +669,11 @@ export const AdminHubModal: React.FC<AdminHubModalProps> = ({
                   type="button"
                   onClick={handleForceFullPushToSupabase}
                   disabled={isSyncing}
-                  className="w-full bg-white hover:bg-neutral-200 active:scale-95 text-neutral-950 font-black text-xs py-3 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2"
+                  className="w-full bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground font-bold text-xs py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isSyncing ? (
                     <>
-                      <div className="w-3.5 h-3.5 rounded-full border-2 border-neutral-950 border-t-transparent animate-spin" />
+                      <div className="w-3.5 h-3.5 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin" />
                       Syncing to Cloud Database...
                     </>
                   ) : (

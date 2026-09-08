@@ -59,21 +59,21 @@ export const DocumentEditModal: React.FC<DocumentEditModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-neutral-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden">
-        <div className="p-6 border-b border-neutral-800 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150">
+      <div className="bg-card border border-border rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden">
+        <div className="p-6 border-b border-border flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-neutral-800 text-white flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-secondary text-primary border border-border flex items-center justify-center">
               <Icons.Edit className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">Edit Document Details</h2>
-              <p className="text-xs text-neutral-400">Modify accounting metadata for {doc.invoiceNumber}</p>
+              <h2 className="text-base font-bold text-foreground">Edit Document Details</h2>
+              <p className="text-xs text-muted-foreground">Modify accounting metadata for {doc.invoiceNumber}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-neutral-400 hover:text-white p-2 rounded-xl hover:bg-neutral-800 transition-all"
+            className="text-muted-foreground hover:text-foreground p-2 rounded-xl hover:bg-secondary transition-all cursor-pointer"
           >
             ✕
           </button>
@@ -81,13 +81,13 @@ export const DocumentEditModal: React.FC<DocumentEditModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
               Assigned Site *
             </label>
             <select
               value={siteId}
               onChange={(e) => setSiteId(e.target.value)}
-              className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white transition-colors"
+              className="w-full bg-background border border-input rounded-xl px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-colors"
             >
               {sites.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -98,7 +98,7 @@ export const DocumentEditModal: React.FC<DocumentEditModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
               Vendor / Supplier Name *
             </label>
             <input
@@ -106,19 +106,19 @@ export const DocumentEditModal: React.FC<DocumentEditModalProps> = ({
               required
               value={vendorName}
               onChange={(e) => setVendorName(e.target.value)}
-              className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white transition-colors"
+              className="w-full bg-background border border-input rounded-xl px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-colors"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                 Document Type
               </label>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as DocumentType)}
-                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white transition-colors"
+                className="w-full bg-background border border-input rounded-xl px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-colors"
               >
                 <option value="Invoice">Invoice</option>
                 <option value="Challan">Challan</option>
@@ -128,7 +128,7 @@ export const DocumentEditModal: React.FC<DocumentEditModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                 {type === 'Ledger'
                   ? 'Ledger Period / Range *'
                   : type === 'Credit Note'
@@ -143,14 +143,14 @@ export const DocumentEditModal: React.FC<DocumentEditModalProps> = ({
                 placeholder={type === 'Ledger' ? '01-Apr-2023 to 31-Mar-2024' : 'Reference #'}
                 value={invoiceNumber}
                 onChange={(e) => setInvoiceNumber(e.target.value)}
-                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-white transition-colors"
+                className="w-full bg-background border border-input rounded-xl px-3.5 py-2.5 text-sm text-foreground font-mono focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-colors"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                 {type === 'Ledger' ? 'Statement Date' : 'Issue Date'}
               </label>
               <input
@@ -158,12 +158,12 @@ export const DocumentEditModal: React.FC<DocumentEditModalProps> = ({
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-white transition-colors"
+                className="w-full bg-background border border-input rounded-xl px-3.5 py-2.5 text-sm text-foreground font-mono focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                 {type === 'Ledger'
                   ? 'Closing / Net Balance (₹) *'
                   : type === 'Credit Note'
@@ -176,20 +176,20 @@ export const DocumentEditModal: React.FC<DocumentEditModalProps> = ({
                 required
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-emerald-400 font-mono font-bold focus:outline-none focus:border-white transition-colors"
+                className="w-full bg-background border border-input rounded-xl px-3.5 py-2.5 text-sm text-emerald-400 font-mono font-bold focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring transition-colors"
               />
             </div>
           </div>
 
-          <div className="pt-4 flex gap-3 border-t border-neutral-800">
+          <div className="pt-4 flex gap-3 border-t border-border">
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-1 bg-white hover:bg-neutral-200 active:scale-95 text-neutral-950 font-black text-xs py-3 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2"
+              className="flex-1 bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground font-bold text-xs py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
             >
               {isSaving ? (
                 <>
-                  <div className="w-3.5 h-3.5 rounded-full border-2 border-neutral-950 border-t-transparent animate-spin" />
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin" />
                   Saving Changes...
                 </>
               ) : (
@@ -199,7 +199,7 @@ export const DocumentEditModal: React.FC<DocumentEditModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold text-xs py-3 px-5 rounded-xl active:scale-95 transition-all"
+              className="bg-secondary hover:bg-secondary/80 text-secondary-foreground font-bold text-xs py-3 px-5 rounded-xl active:scale-95 transition-all border border-border cursor-pointer"
             >
               Cancel
             </button>

@@ -53,18 +53,18 @@ export const Pagination: React.FC<PaginationProps> = ({
   };
 
   return (
-    <div className="bg-neutral-900/90 border border-neutral-800/80 rounded-3xl p-4 sm:p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl mt-6">
+    <div className="bg-card border border-border rounded-3xl p-4 sm:p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl mt-6">
       {/* Left: Range, Document Count & Total Amount */}
-      <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-400">
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
         <div className="font-mono">
-          Showing <span className="text-white font-bold">{startIdx}</span> -{' '}
-          <span className="text-white font-bold">{endIdx}</span> of{' '}
-          <span className="text-white font-bold">{totalItems}</span> documents
+          Showing <span className="text-foreground font-bold">{startIdx}</span> -{' '}
+          <span className="text-foreground font-bold">{endIdx}</span> of{' '}
+          <span className="text-foreground font-bold">{totalItems}</span> documents
         </div>
 
         {totalAmount !== undefined && (
-          <div className="flex items-center gap-1.5 pl-3 border-l border-neutral-800 font-mono">
-            <span className="text-neutral-400 text-[11px] uppercase font-bold">Total:</span>
+          <div className="flex items-center gap-1.5 pl-3 border-l border-border font-mono">
+            <span className="text-muted-foreground text-[11px] uppercase font-bold">Total:</span>
             <span className="text-emerald-400 font-black text-xs">
               {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalAmount)}
             </span>
@@ -73,12 +73,12 @@ export const Pagination: React.FC<PaginationProps> = ({
 
         {/* Rows per page selector */}
         {onPageSizeChange && (
-          <div className="flex items-center gap-2 pl-3 border-l border-neutral-800">
-            <span className="text-neutral-400 text-[11px]">Per page:</span>
+          <div className="flex items-center gap-2 pl-3 border-l border-border">
+            <span className="text-muted-foreground text-[11px]">Per page:</span>
             <select
               value={pageSize}
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              className="bg-neutral-950 border border-neutral-800 text-white rounded-xl px-2.5 py-1 text-xs font-mono focus:outline-none focus:border-neutral-600 transition-colors"
+              className="bg-background border border-input text-foreground rounded-xl px-2.5 py-1 text-xs font-mono focus:outline-none focus:border-ring transition-colors"
             >
               <option value={5}>5</option>
               <option value={10}>10</option>
@@ -95,7 +95,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         <button
           onClick={() => onPageChange(1)}
           disabled={currentPage === 1}
-          className="hidden sm:inline-flex p-2 sm:p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
+          className="hidden sm:inline-flex p-2 sm:p-2.5 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
           title="First Page"
         >
           <Icons.ChevronsLeft className="w-4 h-4" />
@@ -105,17 +105,17 @@ export const Pagination: React.FC<PaginationProps> = ({
         <button
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
-          className="p-2 sm:p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
+          className="p-2 sm:p-2.5 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
           title="Previous Page"
         >
           <Icons.ChevronLeft className="w-4 h-4" />
         </button>
 
         {/* Compact Mobile Page Indicator */}
-        <div className="sm:hidden px-3 py-1.5 rounded-xl bg-neutral-950 border border-neutral-800 text-xs font-mono font-bold text-white">
+        <div className="sm:hidden px-3 py-1.5 rounded-xl bg-card border border-border text-xs font-mono font-bold text-foreground">
           <span>{currentPage}</span>
-          <span className="text-neutral-500 mx-1">/</span>
-          <span className="text-neutral-400">{totalPages}</span>
+          <span className="text-muted-foreground mx-1">/</span>
+          <span className="text-muted-foreground">{totalPages}</span>
         </div>
 
         {/* Numeric Page Buttons (Tablet & Desktop) */}
@@ -125,7 +125,7 @@ export const Pagination: React.FC<PaginationProps> = ({
               return (
                 <span
                   key={`ellipsis-${idx}`}
-                  className="w-7 sm:w-9 h-7 sm:h-9 flex items-center justify-center text-neutral-600 text-xs font-mono"
+                  className="w-7 sm:w-9 h-7 sm:h-9 flex items-center justify-center text-muted-foreground text-xs font-mono"
                 >
                   ...
                 </span>
@@ -141,8 +141,8 @@ export const Pagination: React.FC<PaginationProps> = ({
                 onClick={() => onPageChange(pageNum)}
                 className={`w-8 sm:w-9 h-8 sm:h-9 rounded-xl text-xs font-bold font-mono transition-all ${
                   isActive
-                    ? 'bg-white text-neutral-950 shadow-lg shadow-white/5 font-black scale-105'
-                    : 'bg-neutral-950 border border-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-800'
+                    ? 'bg-primary text-primary-foreground shadow-sm font-black scale-105'
+                    : 'bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-accent'
                 }`}
               >
                 {pageNum}
@@ -155,7 +155,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         <button
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage >= totalPages}
-          className="p-2 sm:p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
+          className="p-2 sm:p-2.5 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
           title="Next Page"
         >
           <Icons.ChevronRight className="w-4 h-4" />
@@ -165,7 +165,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         <button
           onClick={() => onPageChange(totalPages)}
           disabled={currentPage >= totalPages}
-          className="hidden sm:inline-flex p-2 sm:p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
+          className="hidden sm:inline-flex p-2 sm:p-2.5 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
           title="Last Page"
         >
           <Icons.ChevronsRight className="w-4 h-4" />

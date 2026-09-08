@@ -110,35 +110,35 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     .toUpperCase();
 
   return (
-    <div className="fixed inset-0 z-50 bg-neutral-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+      <div className="bg-card border border-border rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
         {/* Modal Header */}
-        <div className="p-6 border-b border-neutral-800 flex items-center justify-between shrink-0 bg-neutral-900/90">
+        <div className="p-6 border-b border-border flex items-center justify-between shrink-0 bg-card">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center text-base font-black shadow-lg shadow-purple-950/50">
+            <div className="w-12 h-12 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center text-base font-bold shadow-md">
               {userInitials}
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <h2 className="text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
                 <span>Account Profile & Settings</span>
                 <span
-                  className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                  className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                     currentUser.role === 'Admin'
-                      ? 'bg-purple-950 text-purple-300 border-purple-800'
+                      ? 'bg-secondary text-secondary-foreground border-border'
                       : currentUser.role === 'Checker'
-                      ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
-                      : 'bg-neutral-800 text-neutral-300 border-neutral-700'
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                      : 'bg-secondary text-secondary-foreground border-border'
                   }`}
                 >
                   {currentUser.role}
                 </span>
               </h2>
-              <p className="text-xs text-neutral-400">{currentUser.email}</p>
+              <p className="text-xs text-muted-foreground">{currentUser.email}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-neutral-400 hover:text-white p-2 rounded-xl hover:bg-neutral-800 transition-all cursor-pointer"
+            className="text-muted-foreground hover:text-foreground p-2 rounded-xl hover:bg-secondary transition-all cursor-pointer"
           >
             <Icons.X className="w-5 h-5" />
           </button>
@@ -148,13 +148,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         <div className="p-6 overflow-y-auto space-y-6 flex-1 custom-scrollbar">
           {/* Section 1: Personal Details */}
           <form onSubmit={handleSaveProfile} className="space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
-              <span className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-2">
-                <Icons.User className="w-4 h-4" />
+            <div className="flex items-center justify-between pb-2 border-b border-border">
+              <span className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                <Icons.User className="w-4 h-4 text-primary" />
                 <span>Personal Information</span>
               </span>
               {profileSuccessMsg && (
-                <span className="text-xs font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800 px-2.5 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
+                <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
                   <Icons.Check className="w-3.5 h-3.5" />
                   {profileSuccessMsg}
                 </span>
@@ -162,13 +162,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             </div>
 
             {profileErrorMsg && (
-              <div className="p-3 bg-rose-950/60 border border-rose-800 rounded-xl text-xs text-rose-200">
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-xs text-destructive">
                 {profileErrorMsg}
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                 Full Display Name *
               </label>
               <input
@@ -176,33 +176,33 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-neutral-950 border border-neutral-800 focus:border-purple-500 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none transition-colors"
+                className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2.5 text-sm text-foreground focus:outline-none transition-colors"
                 placeholder="e.g. John Doe"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Email Address
                 </label>
                 <input
                   type="email"
                   disabled
                   value={currentUser.email}
-                  className="w-full bg-neutral-950/60 border border-neutral-800/60 rounded-xl px-3.5 py-2.5 text-xs font-mono text-neutral-400 cursor-not-allowed"
+                  className="w-full bg-muted/40 border border-border rounded-xl px-3.5 py-2.5 text-xs font-mono text-muted-foreground cursor-not-allowed"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Assigned Site Scope
                 </label>
                 {currentUser.role === 'Admin' ? (
                   <select
                     value={assignedSiteId}
                     onChange={(e) => setAssignedSiteId(e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-800 focus:border-purple-500 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition-colors"
+                    className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2.5 text-xs text-foreground focus:outline-none transition-colors"
                   >
                     <option value="all">All Sites (Global Admin)</option>
                     {sites.map((s) => (
@@ -222,7 +222,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         ? `${assignedSiteObj.name} (${assignedSiteObj.code})`
                         : 'Unassigned'
                     }
-                    className="w-full bg-neutral-950/60 border border-neutral-800/60 rounded-xl px-3.5 py-2.5 text-xs font-medium text-neutral-400 cursor-not-allowed"
+                    className="w-full bg-muted/40 border border-border rounded-xl px-3.5 py-2.5 text-xs font-medium text-muted-foreground cursor-not-allowed"
                   />
                 )}
               </div>
@@ -232,11 +232,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <button
                 type="submit"
                 disabled={isSavingProfile}
-                className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold text-xs py-2.5 px-5 rounded-xl transition-all shadow-md shadow-purple-950/50 cursor-pointer active:scale-95 flex items-center gap-1.5"
+                className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground font-bold text-xs py-2.5 px-5 rounded-xl transition-all shadow-sm cursor-pointer active:scale-95 flex items-center gap-1.5"
               >
                 {isSavingProfile ? (
                   <>
-                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-3.5 h-3.5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                     <span>Saving...</span>
                   </>
                 ) : (
@@ -250,14 +250,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           </form>
 
           {/* Section 2: Account Security / Change Password */}
-          <form onSubmit={handleUpdatePassword} className="space-y-4 pt-4 border-t border-neutral-800">
-            <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
-              <span className="text-xs font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-2">
-                <Icons.Key className="w-4 h-4 text-purple-400" />
+          <form onSubmit={handleUpdatePassword} className="space-y-4 pt-4 border-t border-border">
+            <div className="flex items-center justify-between pb-2 border-b border-border">
+              <span className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                <Icons.Key className="w-4 h-4 text-primary" />
                 <span>Security & Password</span>
               </span>
               {passwordSuccessMsg && (
-                <span className="text-xs font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800 px-2.5 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
+                <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
                   <Icons.Check className="w-3.5 h-3.5" />
                   {passwordSuccessMsg}
                 </span>
@@ -265,14 +265,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             </div>
 
             {passwordErrorMsg && (
-              <div className="p-3 bg-rose-950/60 border border-rose-800 rounded-xl text-xs text-rose-200">
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-xs text-destructive">
                 {passwordErrorMsg}
               </div>
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                   New Password
                 </label>
                 <input
@@ -281,12 +281,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   placeholder="At least 6 characters"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full bg-neutral-950 border border-neutral-800 focus:border-purple-500 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition-colors"
+                  className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2.5 text-xs text-foreground focus:outline-none transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Confirm New Password
                 </label>
                 <input
@@ -295,7 +295,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   placeholder="Re-enter password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full bg-neutral-950 border border-neutral-800 focus:border-purple-500 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition-colors"
+                  className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2.5 text-xs text-foreground focus:outline-none transition-colors"
                 />
               </div>
             </div>
@@ -304,11 +304,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <button
                 type="submit"
                 disabled={isUpdatingPassword || !newPassword}
-                className="bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 text-neutral-200 font-bold text-xs py-2.5 px-5 rounded-xl transition-all border border-neutral-700 cursor-pointer active:scale-95 flex items-center gap-1.5"
+                className="bg-secondary hover:bg-secondary/80 disabled:opacity-50 text-secondary-foreground font-bold text-xs py-2.5 px-5 rounded-xl transition-all border border-border cursor-pointer active:scale-95 flex items-center gap-1.5"
               >
                 {isUpdatingPassword ? (
                   <>
-                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-3.5 h-3.5 border-2 border-secondary-foreground border-t-transparent rounded-full animate-spin" />
                     <span>Updating Password...</span>
                   </>
                 ) : (
@@ -320,11 +320,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 bg-neutral-950/90 border-t border-neutral-800 flex justify-end shrink-0">
+        <div className="p-4 bg-card border-t border-border flex justify-end shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 text-xs font-bold text-neutral-400 hover:text-white bg-neutral-800 hover:bg-neutral-700 rounded-xl transition-all cursor-pointer"
+            className="px-5 py-2.5 text-xs font-bold text-secondary-foreground hover:text-foreground bg-secondary hover:bg-secondary/80 border border-border rounded-xl transition-all cursor-pointer"
           >
             Close
           </button>

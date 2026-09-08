@@ -135,29 +135,29 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-neutral-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl w-full max-w-3xl max-h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+      <div className="bg-card border border-border rounded-3xl w-full max-w-3xl max-h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-neutral-800 flex items-center justify-between shrink-0 bg-neutral-900/90">
+        <div className="p-5 sm:p-6 border-b border-border flex items-center justify-between shrink-0 bg-card">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-purple-950/70 border border-purple-800/60 text-purple-300 flex items-center justify-center shadow-inner">
+            <div className="w-10 h-10 rounded-2xl bg-secondary border border-border text-primary flex items-center justify-center shadow-inner">
               <Icons.Filter className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
                 <span>Multi-Option Filter Builder</span>
-                <span className="text-[10px] uppercase font-mono font-bold bg-neutral-800 text-neutral-300 px-2 py-0.5 rounded">
+                <span className="text-[10px] uppercase font-mono font-bold bg-secondary text-secondary-foreground px-2 py-0.5 rounded border border-border">
                   {draftRules.length} rule{draftRules.length !== 1 ? 's' : ''}
                 </span>
               </h2>
-              <p className="text-xs text-neutral-400">
+              <p className="text-xs text-muted-foreground">
                 Filter documents by key, condition type, and target values.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-neutral-400 hover:text-white p-2 rounded-xl hover:bg-neutral-800 transition-all cursor-pointer"
+            className="text-muted-foreground hover:text-foreground p-2 rounded-xl hover:bg-secondary transition-all cursor-pointer"
             aria-label="Close Filter Builder"
           >
             <Icons.X className="w-5 h-5" />
@@ -165,8 +165,8 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
         </div>
 
         {/* Quick Presets Bar */}
-        <div className="px-5 sm:px-6 py-2.5 bg-neutral-950/60 border-b border-neutral-800/80 flex items-center gap-2 overflow-x-auto custom-scrollbar shrink-0">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 shrink-0">
+        <div className="px-5 sm:px-6 py-2.5 bg-muted/20 border-b border-border flex items-center gap-2 overflow-x-auto custom-scrollbar shrink-0">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground shrink-0">
             Presets:
           </span>
           <button
@@ -181,7 +181,7 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                 },
               ])
             }
-            className="px-2.5 py-1 text-xs font-semibold bg-neutral-900 hover:bg-amber-950/50 hover:text-amber-300 hover:border-amber-700/60 border border-neutral-800 text-neutral-300 rounded-lg transition-all cursor-pointer shrink-0"
+            className="px-2.5 py-1 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-secondary-foreground border border-border rounded-lg transition-all cursor-pointer shrink-0"
           >
             ⏳ Pending Audits
           </button>
@@ -197,7 +197,7 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                 },
               ])
             }
-            className="px-2.5 py-1 text-xs font-semibold bg-neutral-900 hover:bg-rose-950/50 hover:text-rose-300 hover:border-rose-700/60 border border-neutral-800 text-neutral-300 rounded-lg transition-all cursor-pointer shrink-0"
+            className="px-2.5 py-1 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-secondary-foreground border border-border rounded-lg transition-all cursor-pointer shrink-0"
           >
             📑 Credit Notes & Ledgers
           </button>
@@ -213,7 +213,7 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                 },
               ])
             }
-            className="px-2.5 py-1 text-xs font-semibold bg-neutral-900 hover:bg-emerald-950/50 hover:text-emerald-300 hover:border-emerald-700/60 border border-neutral-800 text-neutral-300 rounded-lg transition-all cursor-pointer shrink-0"
+            className="px-2.5 py-1 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-secondary-foreground border border-border rounded-lg transition-all cursor-pointer shrink-0"
           >
             💰 High Value (≥ ₹25,000)
           </button>
@@ -229,7 +229,7 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                 },
               ])
             }
-            className="px-2.5 py-1 text-xs font-semibold bg-neutral-900 hover:bg-purple-950/50 hover:text-purple-300 hover:border-purple-700/60 border border-neutral-800 text-neutral-300 rounded-lg transition-all cursor-pointer shrink-0"
+            className="px-2.5 py-1 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-secondary-foreground border border-border rounded-lg transition-all cursor-pointer shrink-0"
           >
             🧾 Tax Invoices
           </button>
@@ -238,18 +238,18 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
         {/* Modal Body: Rules List */}
         <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 custom-scrollbar">
           {draftRules.length === 0 ? (
-            <div className="py-12 text-center border-2 border-dashed border-neutral-800 rounded-3xl space-y-3">
-              <Icons.Filter className="w-10 h-10 mx-auto text-neutral-600" />
+            <div className="py-12 text-center border-2 border-dashed border-border rounded-3xl space-y-3">
+              <Icons.Filter className="w-10 h-10 mx-auto text-muted-foreground" />
               <div>
-                <h4 className="text-sm font-bold text-neutral-300">No Filter Rules Active</h4>
-                <p className="text-xs text-neutral-500 max-w-sm mx-auto mt-1">
+                <h4 className="text-sm font-bold text-foreground">No Filter Rules Active</h4>
+                <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1">
                   Add criteria rules to slice and explore your documents by type, site, status, amount, or date.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handleAddRule}
-                className="inline-flex items-center gap-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer active:scale-95"
+                className="inline-flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer active:scale-95 shadow-sm"
               >
                 <Icons.Plus className="w-4 h-4" />
                 <span>Add First Filter Rule</span>
@@ -263,26 +263,26 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                 return (
                   <div
                     key={rule.id}
-                    className="p-4 bg-neutral-950/80 border border-neutral-800 rounded-2xl space-y-3 relative hover:border-neutral-700/80 transition-all shadow-sm"
+                    className="p-4 bg-muted/20 border border-border rounded-2xl space-y-3 relative hover:border-border transition-all shadow-sm"
                   >
                     {/* Top Row: Key, Operator, and Delete */}
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
                       {/* Step index badge */}
                       <div className="sm:col-span-1 flex items-center justify-start">
-                        <span className="w-6 h-6 rounded-md bg-neutral-800 border border-neutral-700 text-neutral-400 flex items-center justify-center text-[10px] font-bold font-mono">
+                        <span className="w-6 h-6 rounded-md bg-secondary border border-border text-foreground flex items-center justify-center text-[10px] font-bold font-mono">
                           {index + 1}
                         </span>
                       </div>
 
                       {/* 1. Select Key */}
                       <div className="sm:col-span-5">
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
                           Key / Field
                         </label>
                         <select
                           value={rule.key}
                           onChange={(e) => handleKeyChange(index, e.target.value as FilterKey)}
-                          className="w-full bg-neutral-900 border border-neutral-700/80 focus:border-purple-500 rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none transition-colors"
+                          className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3 py-2 text-xs font-semibold text-foreground focus:outline-none transition-colors"
                         >
                           {FILTER_KEY_OPTIONS.map((opt) => (
                             <option key={opt.key} value={opt.key}>
@@ -294,7 +294,7 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
 
                       {/* 2. Select Operator / Condition */}
                       <div className="sm:col-span-5">
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
                           Condition
                         </label>
                         <select
@@ -302,7 +302,7 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                           onChange={(e) =>
                             handleOperatorChange(index, e.target.value as FilterOperator)
                           }
-                          className="w-full bg-neutral-900 border border-neutral-700/80 focus:border-purple-500 rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none transition-colors"
+                          className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3 py-2 text-xs font-semibold text-foreground focus:outline-none transition-colors"
                         >
                           {availableOps.map((op) => (
                             <option key={op.operator} value={op.operator}>
@@ -317,7 +317,7 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handleRemoveRule(rule.id)}
-                          className="p-2 text-neutral-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-xl transition-all border border-transparent hover:border-rose-900/50 cursor-pointer"
+                          className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all border border-transparent hover:border-destructive/20 cursor-pointer"
                           title="Remove this rule"
                         >
                           <Icons.Trash className="w-4 h-4" />
@@ -326,8 +326,8 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                     </div>
 
                     {/* Bottom Row: Dynamic Value Input */}
-                    <div className="pt-2 border-t border-neutral-800/80">
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-500 mb-1.5">
+                    <div className="pt-2 border-t border-border">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                         Target Value
                       </label>
 
@@ -349,18 +349,16 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                                       onClick={() => handleToggleMultiType(index, t)}
                                       className={`py-2 px-3 text-xs font-bold rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
                                         isSelected
-                                          ? t === 'Invoice'
-                                            ? 'bg-purple-950/80 text-purple-200 border-purple-500/80 shadow-sm'
-                                            : t === 'Challan'
-                                            ? 'bg-indigo-950/80 text-indigo-200 border-indigo-500/80 shadow-sm'
+                                          ? t === 'Invoice' || t === 'Challan'
+                                            ? 'bg-secondary text-secondary-foreground border-border shadow-sm'
                                             : t === 'Credit Note'
-                                            ? 'bg-rose-950/80 text-rose-200 border-rose-500/80 shadow-sm'
-                                            : 'bg-sky-950/80 text-sky-200 border-sky-500/80 shadow-sm'
-                                          : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700'
+                                            ? 'bg-rose-500/10 text-rose-400 border-rose-500/20 shadow-sm'
+                                            : 'bg-sky-500/10 text-sky-400 border-sky-500/20 shadow-sm'
+                                          : 'bg-background border-input text-muted-foreground hover:text-foreground hover:border-border'
                                       }`}
                                     >
                                       <span>{t}</span>
-                                      {isSelected && <Icons.Check className="w-3.5 h-3.5 stroke-[3]" />}
+                                      {isSelected && <Icons.Check className="w-3.5 h-3.5 stroke-[2.5]" />}
                                     </button>
                                   );
                                 }
@@ -370,7 +368,7 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                             <select
                               value={rule.value || 'Invoice'}
                               onChange={(e) => handleValueChange(index, e.target.value)}
-                              className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                              className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none"
                             >
                               <option value="Invoice">Invoice</option>
                               <option value="Challan">Challan</option>
@@ -389,8 +387,8 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                             onClick={() => handleValueChange(index, 'uploaded')}
                             className={`py-2 px-3 text-xs font-bold rounded-xl border flex items-center justify-center gap-2 transition-all cursor-pointer ${
                               rule.value === 'uploaded'
-                                ? 'bg-amber-950/80 text-amber-300 border-amber-600 shadow-sm'
-                                : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                                ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-sm'
+                                : 'bg-background border-input text-muted-foreground hover:text-foreground'
                             }`}
                           >
                             <Icons.Clock className="w-3.5 h-3.5" />
@@ -401,8 +399,8 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                             onClick={() => handleValueChange(index, 'verified')}
                             className={`py-2 px-3 text-xs font-bold rounded-xl border flex items-center justify-center gap-2 transition-all cursor-pointer ${
                               rule.value === 'verified'
-                                ? 'bg-emerald-950/80 text-emerald-300 border-emerald-600 shadow-sm'
-                                : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-sm'
+                                : 'bg-background border-input text-muted-foreground hover:text-foreground'
                             }`}
                           >
                             <Icons.Check className="w-3.5 h-3.5" />
@@ -416,7 +414,7 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                         <select
                           value={rule.value || (sites[0]?.id || '')}
                           onChange={(e) => handleValueChange(index, e.target.value)}
-                          className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                          className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none"
                         >
                           {sites.map((s) => (
                             <option key={s.id} value={s.id}>
@@ -441,7 +439,7 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                           }
                           value={rule.value || ''}
                           onChange={(e) => handleValueChange(index, e.target.value)}
-                          className="w-full bg-neutral-900 border border-neutral-700/80 focus:border-purple-500 rounded-xl px-3.5 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none transition-colors"
+                          className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors"
                         />
                       )}
 
@@ -451,7 +449,7 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                           {rule.operator === 'between' ? (
                             <div className="grid grid-cols-2 gap-3">
                               <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-neutral-500">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
                                   ₹ Min
                                 </span>
                                 <input
@@ -464,11 +462,11 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                                       min: e.target.value,
                                     })
                                   }
-                                  className="w-full bg-neutral-900 border border-neutral-700/80 pl-12 pr-3 py-2 text-xs font-mono text-emerald-400 focus:outline-none rounded-xl"
+                                  className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring pl-12 pr-3 py-2 text-xs font-mono text-emerald-400 focus:outline-none rounded-xl"
                                 />
                               </div>
                               <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-neutral-500">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
                                   ₹ Max
                                 </span>
                                 <input
@@ -481,13 +479,13 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                                       max: e.target.value,
                                     })
                                   }
-                                  className="w-full bg-neutral-900 border border-neutral-700/80 pl-12 pr-3 py-2 text-xs font-mono text-emerald-400 focus:outline-none rounded-xl"
+                                  className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring pl-12 pr-3 py-2 text-xs font-mono text-emerald-400 focus:outline-none rounded-xl"
                                 />
                               </div>
                             </div>
                           ) : (
                             <div className="relative">
-                              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400">
+                              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
                                 ₹
                               </span>
                               <input
@@ -495,7 +493,7 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                                 placeholder="e.g. 5000"
                                 value={rule.value || ''}
                                 onChange={(e) => handleValueChange(index, e.target.value)}
-                                className="w-full bg-neutral-900 border border-neutral-700/80 pl-8 pr-3 py-2 text-xs font-mono text-emerald-400 font-bold focus:outline-none rounded-xl"
+                                className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring pl-8 pr-3 py-2 text-xs font-mono text-emerald-400 font-bold focus:outline-none rounded-xl"
                               />
                             </div>
                           )}
@@ -508,7 +506,7 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                           {rule.operator === 'between' ? (
                             <div className="grid grid-cols-2 gap-3">
                               <div>
-                                <label className="block text-[10px] text-neutral-400 mb-0.5">
+                                <label className="block text-[10px] text-muted-foreground mb-0.5">
                                   From Date
                                 </label>
                                 <input
@@ -520,11 +518,11 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                                       from: e.target.value,
                                     })
                                   }
-                                  className="w-full bg-neutral-900 border border-neutral-700/80 px-3 py-2 text-xs font-mono text-white focus:outline-none rounded-xl"
+                                  className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring px-3 py-2 text-xs font-mono text-foreground focus:outline-none rounded-xl"
                                 />
                               </div>
                               <div>
-                                <label className="block text-[10px] text-neutral-400 mb-0.5">
+                                <label className="block text-[10px] text-muted-foreground mb-0.5">
                                   To Date
                                 </label>
                                 <input
@@ -536,7 +534,7 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                                       to: e.target.value,
                                     })
                                   }
-                                  className="w-full bg-neutral-900 border border-neutral-700/80 px-3 py-2 text-xs font-mono text-white focus:outline-none rounded-xl"
+                                  className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring px-3 py-2 text-xs font-mono text-foreground focus:outline-none rounded-xl"
                                 />
                               </div>
                             </div>
@@ -545,7 +543,7 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
                               type="date"
                               value={rule.value || ''}
                               onChange={(e) => handleValueChange(index, e.target.value)}
-                              className="w-full bg-neutral-900 border border-neutral-700/80 px-3 py-2 text-xs font-mono text-white focus:outline-none rounded-xl"
+                              className="w-full bg-background border border-input focus:border-ring focus:ring-1 focus:ring-ring px-3 py-2 text-xs font-mono text-foreground focus:outline-none rounded-xl"
                             />
                           )}
                         </div>
@@ -558,7 +556,7 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
               <button
                 type="button"
                 onClick={handleAddRule}
-                className="w-full py-2.5 bg-neutral-900/80 hover:bg-neutral-800/80 border border-dashed border-neutral-700 hover:border-purple-500/80 text-purple-300 font-bold text-xs rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-2.5 bg-secondary/50 hover:bg-secondary border border-dashed border-border hover:border-primary/50 text-foreground font-bold text-xs rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Icons.Plus className="w-4 h-4" />
                 <span>Add Another Filter Condition</span>
@@ -568,11 +566,11 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 sm:p-6 bg-neutral-950/90 border-t border-neutral-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
+        <div className="p-4 sm:p-6 bg-card border-t border-border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2 text-xs">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-neutral-400">
-              Matches <strong className="text-white font-bold">{matchCount}</strong> of{' '}
+            <span className="text-muted-foreground">
+              Matches <strong className="text-foreground font-bold">{matchCount}</strong> of{' '}
               {allDocuments.length} total documents
             </span>
           </div>
@@ -581,14 +579,14 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
             <button
               type="button"
               onClick={handleClearAll}
-              className="px-4 py-2.5 text-xs font-bold text-neutral-400 hover:text-white bg-neutral-800 hover:bg-neutral-700 rounded-xl transition-all cursor-pointer"
+              className="px-4 py-2.5 text-xs font-bold text-secondary-foreground hover:text-foreground bg-secondary hover:bg-secondary/80 border border-border rounded-xl transition-all cursor-pointer"
             >
               Clear All
             </button>
             <button
               type="button"
               onClick={handleApply}
-              className="flex-1 sm:flex-none px-6 py-2.5 text-xs font-black bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl transition-all shadow-lg shadow-purple-950/50 cursor-pointer active:scale-95"
+              className="flex-1 sm:flex-none px-6 py-2.5 text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl transition-all shadow-sm cursor-pointer active:scale-95"
             >
               Apply {draftRules.length > 0 ? `(${draftRules.length}) Filters` : 'Filters'}
             </button>
