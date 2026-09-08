@@ -184,7 +184,7 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
   };
 
   return (
-    <div className="min-h-screen lg:h-screen bg-neutral-950 text-white flex flex-col font-sans overflow-y-auto lg:overflow-hidden">
+    <div className="h-screen h-[100dvh] bg-neutral-950 text-white flex flex-col font-sans overflow-hidden">
       {/* 1. Clean Top Header */}
       <header className="h-16 flex-shrink-0 bg-neutral-900 border-b border-neutral-800 px-3 sm:px-6 flex items-center justify-between z-20">
         <div className="flex items-center space-x-2 sm:space-x-4 min-w-0">
@@ -295,18 +295,18 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
       </div>
 
       {/* 2. Responsive Split Body */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+      <div className="flex-1 min-h-0 w-full flex flex-col lg:flex-row overflow-hidden relative">
         {/* Left / Center: Clean Document Viewer */}
         <div
-          className={`w-full lg:flex-1 bg-neutral-950 p-2 sm:p-4 lg:p-6 overflow-hidden flex flex-col justify-center items-center relative ${
+          className={`w-full lg:flex-1 h-full min-h-0 bg-neutral-950 p-2 sm:p-4 lg:p-6 overflow-hidden flex flex-col relative ${
             mobileTab === 'viewer'
-              ? 'flex flex-1 min-h-[calc(100vh-130px)] lg:min-h-0'
+              ? 'flex flex-1'
               : 'hidden lg:flex'
           }`}
         >
           {fileSource ? (
             isPdf ? (
-              <div className="w-full h-full flex flex-col rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 shadow-2xl">
+              <div className="w-full h-full min-h-0 flex-1 flex flex-col rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 shadow-2xl">
                 {/* Minimal subheader */}
                 <div className="bg-neutral-900 border-b border-neutral-800 px-3 sm:px-4 py-2 flex items-center justify-between text-xs text-neutral-400 shrink-0">
                   <div className="flex items-center gap-2 truncate">
@@ -354,17 +354,17 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
                   <iframe
                     src={fileSource}
                     onError={() => setIframeError(true)}
-                    className="w-full flex-1 border-0 bg-neutral-900"
+                    className="w-full h-full flex-1 min-h-0 border-0 bg-neutral-900"
                     title="PDF Document Preview"
                   />
                 )}
               </div>
             ) : isImage ? (
-              <div className="w-full h-full flex flex-col rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 shadow-2xl relative">
+              <div className="w-full h-full min-h-0 flex-1 flex flex-col rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-900 shadow-2xl relative">
                 {/* Image toolbar with Zoom Controls */}
                 <div className="bg-neutral-900 border-b border-neutral-800 px-3 sm:px-4 py-2 flex items-center justify-between text-xs text-neutral-400 shrink-0 gap-2">
                   <div className="flex items-center gap-2 truncate">
-                    <Icons.File className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                    <Icons.File className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
                     <span className="font-mono text-white truncate text-xs">
                       {activeDocument.fileName || 'document.png'}
                     </span>
@@ -408,7 +408,7 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
                 </div>
 
                 {/* Scrollable image container */}
-                <div className="flex-1 w-full overflow-auto custom-scrollbar p-3 sm:p-6 flex items-center justify-center bg-neutral-950/80">
+                <div className="flex-1 min-h-0 w-full overflow-auto custom-scrollbar p-3 sm:p-6 flex items-center justify-center bg-neutral-950/80">
                   <img
                     src={fileSource}
                     alt={activeDocument.fileName || 'Document Preview'}
@@ -418,7 +418,7 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="w-full max-w-md p-8 bg-neutral-900 rounded-2xl border border-neutral-800 text-center space-y-4">
+              <div className="m-auto w-full max-w-md p-8 bg-neutral-900 rounded-2xl border border-neutral-800 text-center space-y-4">
                 <div className="w-12 h-12 rounded-xl bg-neutral-800 text-purple-400 flex items-center justify-center mx-auto">
                   <Icons.File className="w-6 h-6" />
                 </div>
@@ -435,7 +435,7 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
             )
           ) : (
             /* Clean Empty / Missing Storage Fallback */
-            <div className="w-full max-w-lg p-8 bg-neutral-900/80 rounded-3xl border border-neutral-800 text-center space-y-5 shadow-2xl">
+            <div className="m-auto w-full max-w-lg p-8 bg-neutral-900/80 rounded-3xl border border-neutral-800 text-center space-y-5 shadow-2xl">
               <div className="w-16 h-16 rounded-2xl bg-purple-950/80 border border-purple-800/60 text-purple-400 flex items-center justify-center mx-auto shadow-inner">
                 {isStorageMissing ? (
                   <Icons.AlertTriangle className="w-8 h-8 text-amber-400" />
@@ -505,9 +505,9 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
 
         {/* Right Column: Streamlined Sidebar */}
         <aside
-          className={`w-full lg:w-96 bg-neutral-900 border-t lg:border-t-0 lg:border-l border-neutral-800 p-4 sm:p-6 flex flex-col justify-between overflow-y-auto flex-shrink-0 ${
+          className={`w-full lg:w-96 h-full min-h-0 bg-neutral-900 border-t lg:border-t-0 lg:border-l border-neutral-800 p-4 sm:p-6 flex flex-col justify-between overflow-y-auto flex-shrink-0 ${
             mobileTab === 'details'
-              ? 'flex flex-1 min-h-[calc(100vh-130px)] lg:min-h-0'
+              ? 'flex flex-1'
               : 'hidden lg:flex'
           }`}
         >
