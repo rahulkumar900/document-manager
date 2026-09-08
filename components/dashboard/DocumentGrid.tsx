@@ -29,25 +29,24 @@ export const DocumentGrid: React.FC<DocumentGridProps> = React.memo(({
 }) => {
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
-      {documents.map((doc) => {
-        const site = siteMap.get(doc.siteId);
-        const isSelected = selectedDocIds.has(doc.id);
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 mb-6">
+        {documents.map((doc) => {
+          const site = siteMap.get(doc.siteId);
+          const isSelected = selectedDocIds.has(doc.id);
 
-        return (
-          <div
-            key={doc.id}
-            onClick={() => onPreview(doc.id)}
-            className={`group cursor-pointer rounded-3xl p-6 transition-all duration-200 shadow-sm hover:shadow-xl hover:shadow-neutral-950/50 flex flex-col justify-between border relative hover:z-20 ${
-              isSelected
-                ? 'bg-neutral-900 border-purple-500/80 ring-2 ring-purple-500/40'
-                : 'bg-neutral-900 border-neutral-800 hover:border-neutral-700'
-            }`}
-          >
-            <div>
-              {/* Header: Checkbox, Type, Status, Cloud indicator, and Minified Action Menu */}
-              <div className="flex items-start justify-between gap-2 mb-4">
-                <div className="flex items-center gap-2.5">
+          return (
+            <div
+              key={doc.id}
+              onClick={() => onPreview(doc.id)}
+              className={`group cursor-pointer rounded-2xl p-4 transition-all duration-200 border relative hover:z-20 ${
+                isSelected
+                  ? 'bg-neutral-900 border-purple-500 ring-2 ring-purple-500/40 shadow-lg shadow-purple-950/30'
+                  : 'bg-neutral-900/90 border-neutral-800 hover:border-neutral-700 hover:bg-neutral-900 shadow-sm'
+              }`}
+            >
+              {/* Row 1: Checkbox + Vendor Name + Amount */}
+              <div className="flex items-center justify-between gap-3 mb-2.5">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   {/* Selection Checkbox */}
                   <button
                     type="button"
@@ -55,102 +54,103 @@ export const DocumentGrid: React.FC<DocumentGridProps> = React.memo(({
                       e.stopPropagation();
                       onToggleSelect(doc.id);
                     }}
-                    className={`w-5 h-5 rounded-lg flex items-center justify-center transition-all border ${
+                    className={`w-4 h-4 rounded-md flex items-center justify-center transition-all border shrink-0 cursor-pointer ${
                       isSelected
                         ? 'bg-purple-600 border-purple-500 text-white shadow-sm'
                         : 'bg-neutral-950 border-neutral-700 hover:border-neutral-500 text-transparent'
                     }`}
                     aria-label={`Select document ${doc.invoiceNumber}`}
                   >
-                    <Icons.Check className="w-3.5 h-3.5 stroke-[3]" />
+                    <Icons.Check className="w-3 h-3 stroke-[3]" />
                   </button>
 
+                  <h3 className="text-sm font-bold text-white group-hover:text-purple-200 truncate transition-colors">
+                    {doc.vendorName}
+                  </h3>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <span className="text-base font-black font-mono text-emerald-400">
+                    {formatCurrency(doc.amount)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Row 2: Type Pill • Invoice # • Site Code • Date • Status • Action Menu */}
+              <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-neutral-800/60 text-xs">
+                <div className="flex items-center gap-2 overflow-hidden flex-wrap sm:flex-nowrap">
+                  {/* Type Badge */}
                   <span
-                    className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                    className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border shrink-0 ${
                       doc.type === 'Invoice'
-                        ? 'bg-purple-950/80 text-purple-300 border-purple-800/80'
+                        ? 'bg-purple-950/70 text-purple-300 border-purple-800/60'
                         : doc.type === 'Challan'
-                        ? 'bg-indigo-950/80 text-indigo-300 border-indigo-800/80'
+                        ? 'bg-indigo-950/70 text-indigo-300 border-indigo-800/60'
                         : doc.type === 'Credit Note'
-                        ? 'bg-rose-950/80 text-rose-300 border-rose-800/80'
-                        : 'bg-sky-950/80 text-sky-300 border-sky-800/80'
+                        ? 'bg-rose-950/70 text-rose-300 border-rose-800/60'
+                        : 'bg-sky-950/70 text-sky-300 border-sky-800/60'
                     }`}
                   >
                     {doc.type}
                   </span>
+
+                  {/* Invoice # */}
+                  <span className="font-mono text-xs text-neutral-300 truncate max-w-[120px] sm:max-w-[140px]" title={doc.invoiceNumber}>
+                    {doc.invoiceNumber}
+                  </span>
+
+                  <span className="text-neutral-600 hidden sm:inline">•</span>
+
+                  {/* Site Pill */}
+                  <span
+                    className="text-[10px] font-mono text-neutral-400 bg-neutral-950 px-1.5 py-0.5 rounded border border-neutral-800 truncate max-w-[110px]"
+                    title={site ? `${site.name} (${site.code})` : 'Unassigned'}
+                  >
+                    {site?.code || 'SITE'}
+                  </span>
+
+                  <span className="text-neutral-600 hidden sm:inline">•</span>
+
+                  {/* Date */}
+                  <span className="text-[11px] text-neutral-400 whitespace-nowrap hidden sm:inline">
+                    {formatDate(doc.date)}
+                  </span>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
+                {/* Status Badge & Action Menu */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
                       doc.status === 'verified'
                         ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800/80'
                         : 'bg-amber-950/80 text-amber-300 border-amber-800/80'
                     }`}
                   >
-                    {doc.status === 'verified' ? (
-                      <>
-                        <Icons.Check className="w-3 h-3" />
-                        Verified
-                      </>
-                    ) : (
-                      <>
-                        <Icons.Clock className="w-3 h-3" />
-                        Pending
-                      </>
-                    )}
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        doc.status === 'verified' ? 'bg-emerald-400' : 'bg-amber-400'
+                      }`}
+                    />
+                    <span>{doc.status === 'verified' ? 'Verified' : 'Pending'}</span>
+                  </span>
+
+                  {/* Action Menu */}
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <DocumentActionMenu
+                      document={doc}
+                      currentUser={currentUser}
+                      onPreview={onPreview}
+                      onVerify={onVerify}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                    />
                   </div>
-
-                  {/* Minified Action Menu */}
-                  <DocumentActionMenu
-                    document={doc}
-                    currentUser={currentUser}
-                    onPreview={onPreview}
-                    onVerify={onVerify}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                  />
-                </div>
-              </div>
-
-              {/* Vendor & Invoice # */}
-              <div className="mb-4">
-                <h3 className="text-base font-bold text-white group-hover:text-neutral-200 line-clamp-1">
-                  {doc.vendorName}
-                </h3>
-                <div className="flex items-center gap-2 text-xs font-mono text-neutral-400 mt-0.5">
-                  <span>{doc.invoiceNumber}</span>
-                  <span>•</span>
-                  <span>{formatDate(doc.date)}</span>
-                </div>
-              </div>
-
-              {/* Site Scope Pill */}
-              <div className="bg-neutral-950/70 rounded-2xl p-3 border border-neutral-800/80 mb-5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-neutral-400 truncate max-w-[170px]">
-                    {site ? site.name : 'Unknown Site'}
-                  </span>
-                  <span className="font-mono text-[10px] font-bold bg-neutral-800 px-2 py-0.5 rounded text-neutral-300">
-                    {site?.code || 'SITE'}
-                  </span>
                 </div>
               </div>
             </div>
-
-            {/* Bottom: Amount and Quick Preview Bar */}
-            <div>
-              <div className="flex items-baseline justify-between pt-4 border-t border-neutral-800/80">
-                <span className="text-xs text-neutral-400 uppercase font-semibold">Amount</span>
-                <span className="text-xl font-black font-mono text-white">
-                  {formatCurrency(doc.amount)}
-                </span>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
 
       {/* Grid Summary Footer: Total Amount */}
       {documents.length > 0 && (
