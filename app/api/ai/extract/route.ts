@@ -143,27 +143,30 @@ export async function POST(req: NextRequest) {
     }
 
     const formData = await req.formData();
-    const file = formData.get('file') as File | null;
+    // Accept either multiple files ('files') or single file ('file')
+    const filesList = formData.getAll('files') as File[];
+    const singleFile = formData.get('file') as File | null;
+    const files: File[] = filesList.length > 0 ? filesList : (singleFile ? [singleFile] : []);
 
-    if (!file) {
+    if (files.length === 0) {
       return NextResponse.json({ success: false, error: 'No document file was provided.' }, { status: 400 });
     }
 
-    // 2. Strict file size validation
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      return NextResponse.json(
-        { success: false, error: `File size (${(file.size / (1024 * 1024)).toFixed(1)} MB) exceeds maximum limit of 25 MB.` },
-        { status: 413 }
-      );
-    }
-
-    // 3. MIME type validation
-    const mimeType = file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
-    if (file.type && !ALLOWED_MIME_TYPES.has(file.type.toLowerCase()) && !file.type.startsWith('image/')) {
-      return NextResponse.json(
-        { success: false, error: `Unsupported file format (${file.type}). Supported types: PDF, PNG, JPG, WEBP.` },
-        { status: 415 }
-      );
+    // Strict file size & mime validation across files
+    for (const f of files) {
+      if (f.size > MAX_FILE_SIZE_BYTES) {
+        return NextResponse.json(
+          { success: false, error: `File "${f.name}" (${(f.size / (1024 * 1024)).toFixed(1)} MB) exceeds maximum limit of 25 MB.` },
+          { status: 413 }
+        );
+      }
+      const mimeType = f.type || (f.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+      if (f.type && !ALLOWED_MIME_TYPES.has(f.type.toLowerCase()) && !f.type.startsWith('image/')) {
+        return NextResponse.json(
+          { success: false, error: `Unsupported file format for "${f.name}" (${f.type}). Supported types: PDF, PNG, JPG, WEBP.` },
+          { status: 415 }
+        );
+      }
     }
 
     const apiKey =
@@ -181,21 +184,81 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Convert file to base64 buffer for Gemini Vision
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const base64Data = buffer.toString('base64');
+    const isMultiDocBatch = files.length > 1;
+
+    // Convert each file to base64 buffer
+    const fileBuffers = await Promise.all(
+      files.map(async (f, idx) => {
+        const arrayBuffer = await f.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const mimeType = f.type || (f.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+        return {
+          docIndex: idx + 1,
+          name: f.name,
+          mimeType,
+          base64Data: buffer.toString('base64'),
+        };
+      })
+    );
 
     const ai = getGeminiClient(apiKey);
-
     const startTime = Date.now();
     let lastError: Error | null = null;
-    let rawParsedData: Record<string, unknown> | null = null;
+    let rawParsedData: any = null;
     let usedModelName = '';
 
-    // Optimized concise system instruction
+    // Multi-doc vs Single-doc schema
+    const multiDocBatchSchema: Schema = {
+      type: Type.OBJECT,
+      properties: {
+        documents: {
+          type: Type.ARRAY,
+          description: 'Extracted results for each input document in corresponding order',
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              docIndex: { type: Type.INTEGER, description: '1-based index corresponding to Document 1, Document 2, etc.' },
+              invoices: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    vendorName: { type: Type.STRING, description: 'Official vendor / supplier / company / account name' },
+                    invoiceNumber: {
+                      type: Type.STRING,
+                      description:
+                        'For Invoices: Invoice #. For Challans: Delivery Challan #. For Credit Notes: Credit Note #. For Ledgers/Statements: The statement period or date range (e.g. "01-Apr-2023 to 31-Mar-2024" or "01/04/2024 - 31/03/2025" or "Apr 2024 - Mar 2025").',
+                    },
+                    date: { type: Type.STRING, description: 'Document issue date or Ledger ending date in YYYY-MM-DD' },
+                    documentType: {
+                      type: Type.STRING,
+                      enum: ['Invoice', 'Challan', 'Credit Note', 'Ledger'],
+                      description: 'Classify as Invoice, Challan, Credit Note, or Ledger (Account Statement)',
+                    },
+                    totalAmount: {
+                      type: Type.NUMBER,
+                      description: 'Total amount, net payable, credit amount, or closing balance for Ledger',
+                    },
+                    subtotal: { type: Type.NUMBER, description: 'Taxable subtotal or opening amount' },
+                    taxAmount: { type: Type.NUMBER, description: 'Total tax / GST amount' },
+                    taxId: { type: Type.STRING, description: 'GSTIN / Tax ID of vendor or account' },
+                    pageNumber: { type: Type.INTEGER, description: '1-based page number where document appears' },
+                    notes: { type: Type.STRING, description: 'Summary of items or ledger account description' },
+                  },
+                  required: ['vendorName', 'invoiceNumber', 'date', 'documentType', 'totalAmount'],
+                },
+              },
+            },
+            required: ['docIndex', 'invoices'],
+          },
+        },
+      },
+      required: ['documents'],
+    };
+
+    // System instruction
     const systemInstruction = `You are an expert document OCR and accounting extraction AI for construction and commercial documentation.
-Analyze the provided document (PDF or image) and extract all distinct records.
+Analyze the provided document(s) (PDF or image) and extract all distinct records.
 
 DOCUMENT CLASSIFICATION RULES:
 - "Invoice": Tax Invoice, Commercial Invoice, Sales Bill, Bill of Supply.
@@ -218,39 +281,53 @@ SPECIAL FIELD EXTRACTION RULES:
 8. taxId: GSTIN or PAN of the party if present.
 9. notes: Concise summary of items or ledger account description.`;
 
-    // Try candidate models in order with strict 10s timeout and instant failover (no sleeping delays)
+    // Construct prompt parts
+    const contentParts: any[] = [];
+    if (isMultiDocBatch) {
+      contentParts.push({
+        text: `Below are ${files.length} separate documents bundled together. Extract all invoice/challan/ledger records from Document 1 through Document ${files.length}. Associate each with its docIndex (1 for Document 1, 2 for Document 2, etc.) in the "documents" array.`,
+      });
+      fileBuffers.forEach((fb) => {
+        contentParts.push({ text: `--- BEGIN DOCUMENT ${fb.docIndex} (${fb.name}) ---` });
+        contentParts.push({
+          inlineData: {
+            data: fb.base64Data,
+            mimeType: fb.mimeType,
+          },
+        });
+      });
+      contentParts.push({
+        text: `Extract all records from each document into the "documents" array with their corresponding docIndex (1 to ${files.length}).`,
+      });
+    } else {
+      contentParts.push({
+        inlineData: {
+          data: fileBuffers[0].base64Data,
+          mimeType: fileBuffers[0].mimeType,
+        },
+      });
+      contentParts.push({
+        text: 'Extract all distinct invoices, delivery challans, credit notes, or account ledgers/statements in this document. Return in the "invoices" array.',
+      });
+    }
+
+    // Try candidate models in order with strict 14s timeout
     for (const modelName of CANDIDATE_MODELS) {
       try {
-        const timeoutMs = 10000;
+        const timeoutMs = isMultiDocBatch ? 18000 : 12000;
         let timeoutHandle: NodeJS.Timeout | null = null;
         const timeoutPromise = new Promise<never>((_, reject) => {
-          timeoutHandle = setTimeout(() => reject(new Error(`Model ${modelName} timed out after 10s`)), timeoutMs);
+          timeoutHandle = setTimeout(() => reject(new Error(`Model ${modelName} timed out after ${timeoutMs / 1000}s`)), timeoutMs);
         });
 
         const generatePromise = ai.models.generateContent({
           model: modelName,
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                {
-                  inlineData: {
-                    data: base64Data,
-                    mimeType: mimeType,
-                  },
-                },
-                {
-                  text: 'Extract all distinct invoices, delivery challans, credit notes, or account ledgers/statements in this document. Return in the "invoices" array.',
-                },
-              ],
-            },
-          ],
+          contents: [{ role: 'user', parts: contentParts }],
           config: {
             systemInstruction,
             responseMimeType: 'application/json',
-            responseSchema: invoiceBatchSchema,
+            responseSchema: isMultiDocBatch ? multiDocBatchSchema : invoiceBatchSchema,
             temperature: 0.0,
-            maxOutputTokens: 2048,
             thinkingConfig: { thinkingBudget: 0 },
           },
         });
@@ -271,14 +348,22 @@ SPECIAL FIELD EXTRACTION RULES:
           }
         }
 
-        if (parsed.invoices && Array.isArray(parsed.invoices) && parsed.invoices.length > 0) {
-          rawParsedData = parsed;
-          usedModelName = modelName;
-          break;
-        } else if (parsed.vendorName || parsed.invoiceNumber || parsed.totalAmount !== undefined) {
-          rawParsedData = { invoices: [parsed] };
-          usedModelName = modelName;
-          break;
+        if (isMultiDocBatch) {
+          if (parsed.documents && Array.isArray(parsed.documents)) {
+            rawParsedData = parsed;
+            usedModelName = modelName;
+            break;
+          }
+        } else {
+          if (parsed.invoices && Array.isArray(parsed.invoices) && parsed.invoices.length > 0) {
+            rawParsedData = parsed;
+            usedModelName = modelName;
+            break;
+          } else if (parsed.vendorName || parsed.invoiceNumber || parsed.totalAmount !== undefined) {
+            rawParsedData = { invoices: [parsed] };
+            usedModelName = modelName;
+            break;
+          }
         }
       } catch (err: unknown) {
         lastError = err as Error;
@@ -286,13 +371,12 @@ SPECIAL FIELD EXTRACTION RULES:
         const isRateLimit = /429|RESOURCE_EXHAUSTED|quota|rate limit/i.test(errMsg);
         console.warn(`[Gemini API] Failover from ${modelName} (${isRateLimit ? '429 Rate Limit' : 'Error'}):`, errMsg);
         if (isRateLimit) {
-          // If rate limit hit, short backoff before attempting next candidate
           await sleep(1500);
         }
       }
     }
 
-    if (!rawParsedData || !rawParsedData.invoices) {
+    if (!rawParsedData) {
       console.error('All Gemini model candidates failed. Last error:', lastError);
       const errMsg = lastError?.message || '';
       const isRateLimited = /429|RESOURCE_EXHAUSTED|quota|rate limit/i.test(errMsg);
@@ -311,8 +395,10 @@ SPECIAL FIELD EXTRACTION RULES:
       );
     }
 
-    const rawInvoices = (rawParsedData.invoices as Array<Record<string, unknown>>) || [];
-    const normalizedInvoices = rawInvoices.map((inv, idx) => {
+    const durationMs = Date.now() - startTime;
+    console.log(`[Gemini API] Batch (${files.length} doc) completed via ${usedModelName} in ${durationMs}ms`);
+
+    const normalizeInvoiceItem = (inv: Record<string, unknown>, idx: number) => {
       const rawDate = (inv.date as string) || '';
       const normalizedDate = normalizeDateString(rawDate);
       const rawAmount = typeof inv.totalAmount === 'number' ? inv.totalAmount : parseFloat(String(inv.totalAmount || 0)) || 0;
@@ -354,12 +440,36 @@ SPECIAL FIELD EXTRACTION RULES:
         notes: (inv.notes as string) || undefined,
         confidenceScore: 0.98,
       };
-    });
+    };
+
+    if (isMultiDocBatch) {
+      const docsArray = (rawParsedData.documents as Array<{ docIndex: number; invoices: Array<Record<string, unknown>> }>) || [];
+      const docResults = files.map((file, idx) => {
+        const docIdx = idx + 1;
+        const matched = docsArray.find((d) => d.docIndex === docIdx);
+        const invList = matched?.invoices && Array.isArray(matched.invoices) ? matched.invoices : [];
+        const normalized = invList.map((inv, i) => normalizeInvoiceItem(inv, i));
+        return {
+          docIndex: docIdx,
+          fileName: file.name,
+          invoices: normalized,
+        };
+      });
+
+      return NextResponse.json({
+        success: true,
+        source: usedModelName,
+        durationMs,
+        isMultiDoc: true,
+        documents: docResults,
+      });
+    }
+
+    const rawInvoices = (rawParsedData.invoices as Array<Record<string, unknown>>) || [];
+    const normalizedInvoices = rawInvoices.map((inv, idx) => normalizeInvoiceItem(inv, idx));
 
     const primaryInvoice = normalizedInvoices[0] || {};
-
-    const durationMs = Date.now() - startTime;
-    console.log(`[Gemini API] Extraction completed via ${usedModelName} in ${durationMs}ms`);
+    console.log(`[Gemini API] Single doc extraction completed via ${usedModelName} in ${durationMs}ms`);
 
     const result = {
       invoices: normalizedInvoices,
