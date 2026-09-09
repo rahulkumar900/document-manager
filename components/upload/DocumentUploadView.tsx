@@ -601,17 +601,15 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
     let isHighDemandSpike = false;
 
     const totalToScan = newFileItems.length;
+    let completedCount = 0;
 
-    for (let i = 0; i < totalToScan; i++) {
-      const item = newFileItems[i];
+    const processSingleFile = async (item: typeof newFileItems[0], i: number) => {
       const fileIndex = uploadedFiles.length + i;
-
-      setAiScanningStep(`Extracting document ${i + 1} of ${totalToScan}: ${item.file.name}...`);
 
       setUploadedFiles((prev) =>
         prev.map((f) =>
           f.id === item.id
-            ? { ...f, status: 'scanning', statusMessage: `AI extracting (${i + 1}/${totalToScan})...` }
+            ? { ...f, status: 'scanning', statusMessage: `AI extracting (${completedCount + 1}/${totalToScan})...` }
             : f
         )
       );
@@ -718,11 +716,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
               });
             });
 
-            // Brief pacing pause between consecutive AI requests to maintain flawless quota
-            if (i < totalToScan - 1) {
-              await new Promise((r) => setTimeout(r, 200));
-            }
-            continue;
+            return;
           }
         }
 
@@ -829,8 +823,26 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
             return (a.pageNumber || 1) - (b.pageNumber || 1);
           });
         });
+      } finally {
+        completedCount++;
+        setAiScanningStep(`Extracted ${completedCount} of ${totalToScan} documents...`);
       }
-    }
+    };
+
+    // Parallel concurrency pool: processes up to 3 documents simultaneously
+    const CONCURRENCY_LIMIT = 3;
+    const queue = newFileItems.map((item, idx) => ({ item, idx }));
+    const workers = Array.from({ length: Math.min(CONCURRENCY_LIMIT, queue.length) }, async () => {
+      while (queue.length > 0) {
+        const next = queue.shift();
+        if (next) {
+          await processSingleFile(next.item, next.idx);
+        }
+      }
+    });
+
+    setAiScanningStep(`Extracting ${totalToScan} document(s) in parallel...`);
+    await Promise.all(workers);
 
     // Only display the error banner if NO documents were extracted with AI AND there was an API failure
     if (successfulAiExtractions === 0 && lastErrorEncountered) {

@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI, Type, Schema } from '@google/genai';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimiter';
+import dns from 'node:dns';
+
+// Ensure IPv4 first to prevent local and serverless IPv6 connection timeouts
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch {
+  // Edge runtime or unsupported environments ignore safely
+}
 
 export const maxDuration = 60;
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB max
@@ -53,11 +61,21 @@ const invoiceBatchSchema: Schema = {
 
 // Verified active models in order of instant latency, high quota availability, and accuracy
 const CANDIDATE_MODELS = [
-  'gemini-flash-lite-latest',
   'gemini-3.1-flash-lite',
   'gemini-3.6-flash',
-  'gemini-flash-latest',
 ];
+
+// Persistent client cache for HTTP keep-alive connection reuse across Vercel invocations
+let cachedClient: GoogleGenAI | null = null;
+let cachedApiKey = '';
+
+function getGeminiClient(apiKey: string): GoogleGenAI {
+  if (!cachedClient || cachedApiKey !== apiKey) {
+    cachedClient = new GoogleGenAI({ apiKey });
+    cachedApiKey = apiKey;
+  }
+  return cachedClient;
+}
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -224,8 +242,9 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(arrayBuffer);
     const base64Data = buffer.toString('base64');
 
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = getGeminiClient(apiKey);
 
+    const startTime = Date.now();
     let lastError: Error | null = null;
     let rawParsedData: Record<string, unknown> | null = null;
     let usedModelName = '';
@@ -255,83 +274,73 @@ SPECIAL FIELD EXTRACTION RULES:
 8. taxId: GSTIN or PAN of the party if present.
 9. notes: Concise summary of items or ledger account description.`;
 
-    // Try candidate models in order, with retries on transient errors (503 High Demand / 429 Rate Limit)
+    // Try candidate models in order with strict 10s timeout and instant failover (no sleeping delays)
     for (const modelName of CANDIDATE_MODELS) {
-      let attempts = 0;
-      const maxAttempts = 2;
+      try {
+        const timeoutMs = 10000;
+        let timeoutHandle: NodeJS.Timeout | null = null;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutHandle = setTimeout(() => reject(new Error(`Model ${modelName} timed out after 10s`)), timeoutMs);
+        });
 
-      while (attempts < maxAttempts) {
-        attempts++;
-        try {
-          const response = await ai.models.generateContent({
-            model: modelName,
-            contents: [
-              {
-                role: 'user',
-                parts: [
-                  {
-                    inlineData: {
-                      data: base64Data,
-                      mimeType: mimeType,
-                    },
+        const generatePromise = ai.models.generateContent({
+          model: modelName,
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  inlineData: {
+                    data: base64Data,
+                    mimeType: mimeType,
                   },
-                  {
-                    text: 'Extract all distinct invoices, delivery challans, credit notes, or account ledgers/statements in this document. Return in the "invoices" array.',
-                  },
-                ],
-              },
-            ],
-            config: {
-              systemInstruction,
-              responseMimeType: 'application/json',
-              responseSchema: invoiceBatchSchema,
-              temperature: 0.0,
+                },
+                {
+                  text: 'Extract all distinct invoices, delivery challans, credit notes, or account ledgers/statements in this document. Return in the "invoices" array.',
+                },
+              ],
             },
-          });
+          ],
+          config: {
+            systemInstruction,
+            responseMimeType: 'application/json',
+            responseSchema: invoiceBatchSchema,
+            temperature: 0.0,
+            maxOutputTokens: 2048,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
+        });
 
-          const responseText = response.text?.trim() || '{}';
-          let parsed: any;
-          try {
-            parsed = JSON.parse(responseText);
-          } catch {
-            const match = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-            if (match) {
-              parsed = JSON.parse(match[1]);
-            } else {
-              throw new Error(`AI returned invalid JSON: ${responseText.slice(0, 100)}`);
-            }
-          }
+        const response = await Promise.race([generatePromise, timeoutPromise]);
+        if (timeoutHandle) clearTimeout(timeoutHandle);
 
-          if (parsed.invoices && Array.isArray(parsed.invoices) && parsed.invoices.length > 0) {
-            rawParsedData = parsed;
-            usedModelName = modelName;
-            break;
-          } else if (parsed.vendorName || parsed.invoiceNumber || parsed.totalAmount !== undefined) {
-            // If single object returned
-            rawParsedData = { invoices: [parsed] };
-            usedModelName = modelName;
-            break;
-          }
-        } catch (err: unknown) {
-          lastError = err as Error;
-          const errMsg = (err as { message?: string })?.message || String(err);
-          const isTransient = /503|UNAVAILABLE|high demand|429|RESOURCE_EXHAUSTED|rate/i.test(errMsg);
-
-          console.warn(`[Gemini API] Attempt ${attempts} with ${modelName} failed (${isTransient ? 'transient error' : 'error'}):`, errMsg);
-
-          if (isTransient && attempts < maxAttempts) {
-            // Exponential backoff with jitter
-            const backoffMs = attempts * 1000 + Math.floor(Math.random() * 500);
-            await sleep(backoffMs);
+        const responseText = response.text?.trim() || '{}';
+        let parsed: any;
+        try {
+          parsed = JSON.parse(responseText);
+        } catch {
+          const match = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+          if (match) {
+            parsed = JSON.parse(match[1]);
           } else {
-            // Move to next candidate model
-            break;
+            throw new Error(`AI returned invalid JSON: ${responseText.slice(0, 100)}`);
           }
         }
-      }
 
-      if (rawParsedData && rawParsedData.invoices) {
-        break;
+        if (parsed.invoices && Array.isArray(parsed.invoices) && parsed.invoices.length > 0) {
+          rawParsedData = parsed;
+          usedModelName = modelName;
+          break;
+        } else if (parsed.vendorName || parsed.invoiceNumber || parsed.totalAmount !== undefined) {
+          rawParsedData = { invoices: [parsed] };
+          usedModelName = modelName;
+          break;
+        }
+      } catch (err: unknown) {
+        lastError = err as Error;
+        const errMsg = (err as { message?: string })?.message || String(err);
+        console.warn(`[Gemini API] Fast failover from ${modelName}:`, errMsg);
+        // Instantly try next model without sleeping
       }
     }
 
@@ -393,6 +402,9 @@ SPECIAL FIELD EXTRACTION RULES:
 
     const primaryInvoice = normalizedInvoices[0] || {};
 
+    const durationMs = Date.now() - startTime;
+    console.log(`[Gemini API] Extraction completed via ${usedModelName} in ${durationMs}ms`);
+
     const result = {
       invoices: normalizedInvoices,
       count: normalizedInvoices.length,
@@ -404,11 +416,13 @@ SPECIAL FIELD EXTRACTION RULES:
       totalAmount: primaryInvoice.totalAmount,
       confidenceScore: 0.98,
       source: usedModelName,
+      durationMs,
     };
 
     return NextResponse.json({
       success: true,
       source: usedModelName,
+      durationMs,
       data: result,
     });
   } catch (error: unknown) {
