@@ -257,47 +257,33 @@ export async function POST(req: NextRequest) {
     };
 
     // System instruction
-    const systemInstruction = `You are an expert document OCR and accounting extraction AI for construction and commercial documentation.
-Analyze the provided document(s) (PDF or image) and extract all distinct records.
-
-DOCUMENT CLASSIFICATION RULES:
-- "Invoice": Tax Invoice, Commercial Invoice, Sales Bill, Bill of Supply.
-- "Challan": Delivery Challan, Delivery Note, Dispatch Memo, Material Transfer Challan.
-- "Credit Note": Credit Note, Credit Memo, Cr. Note, Rate Difference / Material Return Credit Note.
-- "Ledger": Account Statement, Party Ledger, Statement of Accounts, Customer/Vendor Ledger, General Ledger.
-
-SPECIAL FIELD EXTRACTION RULES:
-1. documentType: Exactly one of "Invoice", "Challan", "Credit Note", or "Ledger".
-2. invoiceNumber:
-   - For Invoice: The Invoice Number / Bill No.
-   - For Challan: The Delivery Challan No / Memo No.
-   - For Credit Note: The Credit Note Number (e.g., CN-..., CRN-...).
-   - For Ledger: The LEDGER STATEMENT PERIOD / DATE RANGE (e.g. "01-Apr-2023 to 31-Mar-2024", "01/04/2024 - 31/03/2025", "Apr 2024 - Mar 2025", or "FY 2024-25"). If no period date range is stated, use the statement reference or "Period: Current".
-3. vendorName: Official Company / Supplier / Party / Account Name.
-4. date: Document issue date, or for Ledger, the statement end date / as-of date (normalized to YYYY-MM-DD).
-5. totalAmount: Grand Total, Net Payable, Credit Note Total Amount, or for Ledger, the Closing / Net Balance amount.
-6. subtotal: Taxable value or opening amount if present.
-7. taxAmount: GST / Tax amount if present.
-8. taxId: GSTIN or PAN of the party if present.
-9. notes: Concise summary of items or ledger account description.`;
+    // Highly-compressed system instruction: saves ~400 input tokens per call while maintaining precision
+    const systemInstruction = `Expert OCR AI for invoices, delivery challans, credit notes, and ledgers.
+Classify documentType as: "Invoice", "Challan", "Credit Note", or "Ledger".
+Extract:
+- vendorName: Official company / party name.
+- invoiceNumber: Bill #, Challan #, CN #, or for Ledger the date range (e.g. "01-Apr-2023 to 31-Mar-2024").
+- date: YYYY-MM-DD.
+- totalAmount: Grand Total or Ledger net closing balance.
+- subtotal: Taxable value if present.
+- taxAmount: Total GST/tax if present.
+- taxId: GSTIN/PAN if present.
+- notes: Short item summary.`;
 
     // Construct prompt parts
     const contentParts: any[] = [];
     if (isMultiDocBatch) {
       contentParts.push({
-        text: `Below are ${files.length} separate documents bundled together. Extract all invoice/challan/ledger records from Document 1 through Document ${files.length}. Associate each with its docIndex (1 for Document 1, 2 for Document 2, etc.) in the "documents" array.`,
+        text: `Extract all records from Document 1 to Document ${files.length} into the "documents" array with matching docIndex.`,
       });
       fileBuffers.forEach((fb) => {
-        contentParts.push({ text: `--- BEGIN DOCUMENT ${fb.docIndex} (${fb.name}) ---` });
+        contentParts.push({ text: `--- BEGIN DOCUMENT ${fb.docIndex} ---` });
         contentParts.push({
           inlineData: {
             data: fb.base64Data,
             mimeType: fb.mimeType,
           },
         });
-      });
-      contentParts.push({
-        text: `Extract all records from each document into the "documents" array with their corresponding docIndex (1 to ${files.length}).`,
       });
     } else {
       contentParts.push({
@@ -307,11 +293,11 @@ SPECIAL FIELD EXTRACTION RULES:
         },
       });
       contentParts.push({
-        text: 'Extract all distinct invoices, delivery challans, credit notes, or account ledgers/statements in this document. Return in the "invoices" array.',
+        text: 'Extract all distinct invoices, challans, or ledgers into the "invoices" array.',
       });
     }
 
-    // Try candidate models in order with strict 14s timeout
+    // Try candidate models in order with strict timeout
     for (const modelName of CANDIDATE_MODELS) {
       try {
         const timeoutMs = isMultiDocBatch ? 18000 : 12000;
@@ -328,6 +314,7 @@ SPECIAL FIELD EXTRACTION RULES:
             responseMimeType: 'application/json',
             responseSchema: isMultiDocBatch ? multiDocBatchSchema : invoiceBatchSchema,
             temperature: 0.0,
+            maxOutputTokens: isMultiDocBatch ? 2048 : 1024,
             thinkingConfig: { thinkingBudget: 0 },
           },
         });
