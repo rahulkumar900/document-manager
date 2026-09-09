@@ -150,6 +150,66 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
       .slice(0, 5);
   }, [accessibleDocuments]);
 
+  // Monthly / Chronological Spend Trend (Last 6-8 Months)
+  const monthlyTimelineData = useMemo(() => {
+    const monthBuckets = new Map<string, { label: string; year: number; month: number; totalSpend: number; count: number; verified: number; pending: number }>();
+    
+    // Generate buckets for the last 6 months to guarantee continuous graph
+    const today = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      monthBuckets.set(key, {
+        label,
+        year: d.getFullYear(),
+        month: d.getMonth() + 1,
+        totalSpend: 0,
+        count: 0,
+        verified: 0,
+        pending: 0,
+      });
+    }
+
+    accessibleDocuments.forEach((doc) => {
+      const docDate = new Date(doc.date || doc.createdAt);
+      if (isNaN(docDate.getTime())) return;
+      const key = `${docDate.getFullYear()}-${String(docDate.getMonth() + 1).padStart(2, '0')}`;
+      const existing = monthBuckets.get(key);
+      const amount = Number(doc.amount) || 0;
+
+      if (existing) {
+        existing.totalSpend += amount;
+        existing.count += 1;
+        if (doc.status === 'verified') existing.verified += amount;
+        else existing.pending += amount;
+      } else {
+        // Document falls outside the default 6-month window but exists in current filter
+        const label = docDate.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+        monthBuckets.set(key, {
+          label,
+          year: docDate.getFullYear(),
+          month: docDate.getMonth() + 1,
+          totalSpend: amount,
+          count: 1,
+          verified: doc.status === 'verified' ? amount : 0,
+          pending: doc.status === 'uploaded' ? amount : 0,
+        });
+      }
+    });
+
+    const sorted = Array.from(monthBuckets.entries())
+      .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
+      .map(([_, v]) => v);
+
+    const maxSpend = Math.max(...sorted.map((s) => s.totalSpend), 1);
+
+    return {
+      points: sorted,
+      maxSpend,
+    };
+  }, [accessibleDocuments]);
+
   // Site map for lookup
   const siteMap = useMemo(() => {
     return new Map(sites.map((s) => [s.id, s]));
@@ -301,6 +361,171 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
           <p className="text-[11px] text-muted-foreground mt-2">
             Multi-site real-time tracking
           </p>
+        </div>
+      </div>
+
+      {/* 2.5 Visual Analytics Charts: Spend Trend & Verification Distribution */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Chart 1: Monthly Spend & Document Volume Trend (2 Cols) */}
+        <div className="lg:col-span-2 bg-card border border-border rounded-3xl p-6 shadow-xl space-y-4 flex flex-col justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-border">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-primary/15 border border-primary/25 text-primary flex items-center justify-center">
+                  <Icons.BarChart className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
+                  Spend & Cash Flow Trend
+                </h3>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Monthly breakdown of verified expenditure and pending obligations
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 text-[11px] font-medium">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block" />
+                <span className="text-muted-foreground">Verified</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" />
+                <span className="text-muted-foreground">Pending</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bar Chart Visualization */}
+          {monthlyTimelineData.points.every((p) => p.totalSpend === 0) ? (
+            <div className="h-56 flex flex-col items-center justify-center text-center p-6 bg-muted/20 rounded-2xl border border-dashed border-border">
+              <Icons.BarChart className="w-8 h-8 text-muted-foreground/50 mb-2" />
+              <p className="text-xs font-semibold text-muted-foreground">No historical transaction data found</p>
+              <p className="text-[11px] text-muted-foreground/70 mt-0.5">Upload invoices or select &quot;All Time&quot; to see trend graphs.</p>
+            </div>
+          ) : (
+            <div className="pt-4 space-y-4">
+              <div className="h-56 flex items-end justify-between gap-2 sm:gap-4 px-2">
+                {monthlyTimelineData.points.map((pt, i) => {
+                  const heightPct = Math.max((pt.totalSpend / monthlyTimelineData.maxSpend) * 100, pt.totalSpend > 0 ? 8 : 2);
+                  const verifiedRatio = pt.totalSpend > 0 ? (pt.verified / pt.totalSpend) * 100 : 0;
+                  const pendingRatio = pt.totalSpend > 0 ? (pt.pending / pt.totalSpend) * 100 : 0;
+
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center h-full justify-end group relative cursor-pointer">
+                      {/* Tooltip on Hover */}
+                      <div className="absolute -top-14 opacity-0 group-hover:opacity-100 transition-all duration-150 pointer-events-none z-20 bg-popover text-popover-foreground border border-border px-2.5 py-1.5 rounded-xl shadow-2xl text-[11px] whitespace-nowrap">
+                        <div className="font-bold text-foreground">{pt.label}</div>
+                        <div className="font-mono text-emerald-400 font-bold">{formatCurrency(pt.totalSpend)}</div>
+                        <div className="text-[9px] text-muted-foreground">{pt.count} document{pt.count !== 1 ? 's' : ''}</div>
+                      </div>
+
+                      {/* Stacked Bar */}
+                      <div className="w-full max-w-[48px] rounded-t-xl overflow-hidden flex flex-col justify-end bg-muted/40 transition-all duration-300 group-hover:scale-105 group-hover:brightness-110 shadow-inner" style={{ height: `${heightPct}%` }}>
+                        {pt.pending > 0 && (
+                          <div
+                            className="w-full bg-amber-400/90 transition-all duration-300"
+                            style={{ height: `${pendingRatio}%` }}
+                            title={`Pending: ${formatCurrency(pt.pending)}`}
+                          />
+                        )}
+                        {pt.verified > 0 && (
+                          <div
+                            className="w-full bg-emerald-500 transition-all duration-300"
+                            style={{ height: `${verifiedRatio}%` }}
+                            title={`Verified: ${formatCurrency(pt.verified)}`}
+                          />
+                        )}
+                      </div>
+
+                      {/* Month Label */}
+                      <div className="text-[10px] font-mono text-muted-foreground font-bold mt-2 truncate w-full text-center">
+                        {pt.label}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Chart Footer summary */}
+              <div className="p-3 bg-muted/30 rounded-2xl border border-border flex items-center justify-between text-xs">
+                <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                  <Icons.TrendingUp className="w-3.5 h-3.5 text-primary" />
+                  <span>Peak Month:</span>
+                  <strong className="text-foreground font-bold">
+                    {monthlyTimelineData.points.reduce((max, p) => p.totalSpend > max.totalSpend ? p : max, monthlyTimelineData.points[0])?.label || 'N/A'}
+                  </strong>
+                </span>
+                <span className="text-[11px] font-mono font-black text-foreground">
+                  {formatCurrency(monthlyTimelineData.maxSpend)} peak
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Chart 2: Category Spend Share Circular Ring / Ratio (1 Col) */}
+        <div className="bg-card border border-border rounded-3xl p-6 shadow-xl space-y-4 flex flex-col justify-between">
+          <div className="pb-2 border-b border-border">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-primary/15 border border-primary/25 text-primary flex items-center justify-center">
+                <Icons.PieChart className="w-4 h-4" />
+              </div>
+              <h3 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
+                Spend by Category
+              </h3>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Visual proportion of portfolio expenditure
+            </p>
+          </div>
+
+          {/* Dynamic Category Progress Bars */}
+          <div className="space-y-4 py-1">
+            {typeDistribution.map((item) => {
+              const share = item.percentage;
+              return (
+                <div
+                  key={item.type}
+                  onClick={() => onNavigateDocuments(undefined, item.type)}
+                  className="space-y-1.5 cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${item.barClass}`} />
+                      <span className="font-bold text-foreground group-hover:underline truncate">
+                        {item.label}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-mono text-muted-foreground">
+                        {share.toFixed(1)}%
+                      </span>
+                      <span className="font-mono font-bold text-foreground text-xs">
+                        {formatCurrency(item.totalAmount)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden p-0.5">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${item.barClass}`}
+                      style={{ width: `${Math.max(share, 1.5)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="pt-2 border-t border-border flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>Active Categories: <strong className="text-foreground">{typeDistribution.filter((t) => t.count > 0).length} of 4</strong></span>
+            <button
+              onClick={() => onNavigateDocuments()}
+              className="text-primary hover:underline font-bold cursor-pointer"
+            >
+              Filter in Explorer →
+            </button>
+          </div>
         </div>
       </div>
 
