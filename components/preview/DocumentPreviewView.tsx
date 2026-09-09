@@ -37,7 +37,16 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
   const [iframeError, setIframeError] = useState(false);
   const [isStorageMissing, setIsStorageMissing] = useState(false);
   const [isUploadingReplacement, setIsUploadingReplacement] = useState(false);
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+      const isMobile = /android|iphone|ipad|ipod|windows phone|iemobile|blackberry/i.test(userAgent);
+      setIsMobileDevice(isMobile);
+    }
+  }, []);
 
   // Sidebar Inline Edit State
   const [isEditing, setIsEditing] = useState(initialEditMode);
@@ -365,24 +374,44 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
                 </div>
 
                 {iframeError ? (
-                  <div className="flex-1 p-8 flex flex-col items-center justify-center text-center space-y-3">
-                    <Icons.AlertTriangle className="w-8 h-8 text-amber-400" />
-                    <h3 className="text-sm font-bold text-foreground">Browser Preview Restricted</h3>
-                    <p className="text-xs text-muted-foreground max-w-sm">
-                      Inline iframe was restricted by your browser. You can open the file in a new tab.
-                    </p>
-                    <a
-                      href={fileSource}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 bg-primary text-primary-foreground text-xs font-bold px-4 py-2 rounded-xl shadow"
-                    >
-                      <Icons.ExternalLink className="w-3.5 h-3.5" /> Open In Separate Tab
-                    </a>
+                  <div className="flex-1 p-8 flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                      <Icons.File className="w-7 h-7" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground">Mobile PDF Preview</h3>
+                      <p className="text-xs text-muted-foreground max-w-xs mt-1">
+                        Mobile browsers handle PDF documents via external viewer apps or Google Docs Viewer.
+                      </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full max-w-xs">
+                      {fileSource.startsWith('http') && (
+                        <a
+                          href={`https://docs.google.com/viewer?url=${encodeURIComponent(fileSource)}&embedded=true`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full inline-flex items-center justify-center gap-2 bg-secondary hover:bg-accent text-secondary-foreground text-xs font-semibold py-2.5 px-4 rounded-xl border border-border transition-colors cursor-pointer"
+                        >
+                          <Icons.Search className="w-3.5 h-3.5" /> View with Google Docs
+                        </a>
+                      )}
+                      <a
+                        href={fileSource}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold py-2.5 px-4 rounded-xl shadow transition-all cursor-pointer active:scale-95"
+                      >
+                        <Icons.ExternalLink className="w-3.5 h-3.5" /> Open PDF Directly
+                      </a>
+                    </div>
                   </div>
                 ) : (
                   <iframe
-                    src={fileSource}
+                    src={
+                      isMobileDevice && fileSource.startsWith('http')
+                        ? `https://docs.google.com/viewer?url=${encodeURIComponent(fileSource)}&embedded=true`
+                        : fileSource
+                    }
                     onError={() => setIframeError(true)}
                     className="w-full h-full flex-1 min-h-0 border-0 bg-card"
                     title="PDF Document Preview"
