@@ -27,6 +27,7 @@ import {
   deleteDocumentFromSupabase,
 } from '@/lib/store';
 import { exportDocumentsToZip } from '@/lib/exportZip';
+import { findDatabaseDuplicate } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import { applyFilterRules } from '@/lib/filterUtils';
 
@@ -517,12 +518,39 @@ function DocumentPortalContent() {
   };
 
   const handleSaveEditDocument = async (updatedDoc: DocumentRecord) => {
+    // Exact 4-field duplicate check (vendorName, invoiceNumber, date, amount)
+    const duplicate = findDatabaseDuplicate(
+      {
+        vendorName: updatedDoc.vendorName,
+        invoiceNumber: updatedDoc.invoiceNumber,
+        date: updatedDoc.date,
+        amount: updatedDoc.amount,
+      },
+      documents,
+      updatedDoc.id
+    );
+
+    if (duplicate) {
+      alert(
+        `Cannot save changes: A duplicate document already exists!\n\n` +
+          `• Vendor: ${duplicate.vendorName}\n` +
+          `• Invoice #: ${duplicate.invoiceNumber}\n` +
+          `• Date: ${duplicate.date}\n` +
+          `• Amount: ₹${duplicate.amount.toLocaleString()}\n\n` +
+          `All 4 fields match an existing document in the system.`
+      );
+      return;
+    }
+
     const updated = documents.map((d) => (d.id === updatedDoc.id ? updatedDoc : d));
     setDocuments(updated);
     saveDocuments(updated);
     setIsEditingSidebar(false);
     updateUrlParams({ view: 'preview', docId: updatedDoc.id, edit: null });
-    await updateDocumentInSupabase(updatedDoc);
+    const ok = await updateDocumentInSupabase(updatedDoc);
+    if (!ok) {
+      console.warn('Notice: document update was not saved to remote database.');
+    }
   };
 
   const handleDeleteDocument = async (doc: DocumentRecord) => {
@@ -565,6 +593,7 @@ function DocumentPortalContent() {
         siteMap={siteMap}
         currentUser={currentUser}
         initialEditMode={isEditingSidebar}
+        existingDocuments={documents}
         onBack={() => {
           setActiveDocumentId(null);
           setIsEditingSidebar(false);
@@ -584,6 +613,7 @@ function DocumentPortalContent() {
       <DocumentUploadView
         currentUser={currentUser}
         sites={sites}
+        existingDocuments={documents}
         selectedSiteId={selectedSiteFilter}
         onSiteChange={(newSiteId) => {
           setSelectedSiteFilter(newSiteId);

@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { DocumentRecord, SiteRecord, DocumentType } from '@/lib/types';
+import { findDatabaseDuplicate, formatCurrency } from '@/lib/utils';
+import { getStoredDocuments } from '@/lib/store';
 import { Icons } from '../ui/icons';
 
 interface DocumentEditModalProps {
   isOpen: boolean;
   document: DocumentRecord | null;
   sites: SiteRecord[];
+  existingDocuments?: DocumentRecord[];
   onClose: () => void;
   onSave: (updatedDoc: DocumentRecord) => Promise<void> | void;
 }
@@ -14,6 +17,7 @@ export const DocumentEditModal: React.FC<DocumentEditModalProps> = ({
   isOpen,
   document: doc,
   sites,
+  existingDocuments,
   onClose,
   onSave,
 }) => {
@@ -36,11 +40,26 @@ export const DocumentEditModal: React.FC<DocumentEditModalProps> = ({
     }
   }, [doc]);
 
+  // Real-time duplicate validation based strictly on (vendorName, invoiceNumber, date, amount)
+  const duplicateConflict = useMemo(() => {
+    if (!doc || !vendorName.trim() || !invoiceNumber.trim() || !date || !amount) {
+      return null;
+    }
+    const allDocs = existingDocuments && existingDocuments.length > 0 ? existingDocuments : getStoredDocuments();
+    const candidate = {
+      vendorName: vendorName.trim(),
+      invoiceNumber: invoiceNumber.trim(),
+      date,
+      amount: parseFloat(amount) || 0,
+    };
+    return findDatabaseDuplicate(candidate, allDocs, doc.id);
+  }, [doc, vendorName, invoiceNumber, date, amount, existingDocuments]);
+
   if (!isOpen || !doc) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!vendorName.trim() || !amount) return;
+    if (!vendorName.trim() || !amount || duplicateConflict) return;
 
     setIsSaving(true);
     const updated: DocumentRecord = {
@@ -80,6 +99,21 @@ export const DocumentEditModal: React.FC<DocumentEditModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {duplicateConflict && (
+            <div className="p-3.5 bg-destructive/10 border border-destructive/30 rounded-2xl text-xs space-y-1 animate-in fade-in">
+              <div className="flex items-center gap-1.5 font-bold text-destructive">
+                <Icons.AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>Duplicate Document Entry</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Another document with this Vendor Name, Invoice #, Date, and Amount already exists in your database:
+                <span className="font-mono text-foreground block mt-1 font-semibold">
+                  {duplicateConflict.vendorName} • #{duplicateConflict.invoiceNumber} • {duplicateConflict.date} • {formatCurrency(duplicateConflict.amount)}
+                </span>
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
               Assigned Site *

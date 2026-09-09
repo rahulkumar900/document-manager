@@ -7,7 +7,7 @@ import {
   DocumentType,
   DocumentStatus,
 } from './types';
-import { generateUUID } from './utils';
+import { generateUUID, findDatabaseDuplicate } from './utils';
 
 export * from './types';
 export { supabase };
@@ -652,14 +652,52 @@ export const uploadFileToSupabaseStorage = async (
 
 /**
  * Persists a document metadata record into the Supabase 'documents' table
- * with UUID compliance and adaptive column matching.
+ * with UUID compliance, duplicate prevention, and adaptive column matching.
  */
 export const saveDocumentToSupabase = async (
   doc: DocumentRecord
-): Promise<{ success: boolean; error?: string }> => {
+): Promise<{ success: boolean; error?: string; isDuplicate?: boolean }> => {
   try {
     const validId = ensureUUID(doc.id);
     const validSiteId = ensureUUID(doc.siteId);
+
+    // 1. Pre-flight duplicate check against local stored documents
+    const localDocs = getStoredDocuments();
+    const localDuplicate = findDatabaseDuplicate(doc, localDocs, validId);
+    if (localDuplicate) {
+      return {
+        success: false,
+        error: `Duplicate detected: Document matches Vendor "${doc.vendorName}", Invoice #${doc.invoiceNumber}, Date ${doc.date}, and Amount ₹${doc.amount}.`,
+        isDuplicate: true,
+      };
+    }
+
+    // 2. Pre-flight duplicate check against Supabase table
+    const cleanVendor = doc.vendorName.trim();
+    const cleanInvoice = doc.invoiceNumber.trim();
+    const cleanDate = doc.date;
+    const cleanAmount = Number(doc.amount);
+
+    if (cleanVendor && cleanInvoice && cleanDate && !isNaN(cleanAmount)) {
+      const { data: remoteMatches, error: checkError } = await supabase
+        .from('documents')
+        .select('id, vendor_name, invoice_number, date, amount')
+        .ilike('vendor_name', cleanVendor)
+        .ilike('invoice_number', cleanInvoice)
+        .eq('date', cleanDate)
+        .eq('amount', cleanAmount);
+
+      if (!checkError && remoteMatches && remoteMatches.length > 0) {
+        const conflict = remoteMatches.find((m) => m.id !== validId);
+        if (conflict) {
+          return {
+            success: false,
+            error: `Duplicate detected: Document matches Vendor "${doc.vendorName}", Invoice #${doc.invoiceNumber}, Date ${doc.date}, and Amount ₹${doc.amount}.`,
+            isDuplicate: true,
+          };
+        }
+      }
+    }
 
     // Standard columns present in Supabase table
     const payload: Record<string, unknown> = {
@@ -683,6 +721,14 @@ export const saveDocumentToSupabase = async (
     let { error } = await supabase.from('documents').upsert(payload);
 
     if (error) {
+      // Handle Postgres unique constraint violation
+      if (error.code === '23505') {
+        return {
+          success: false,
+          error: `Duplicate document entry: This invoice already exists in the database.`,
+          isDuplicate: true,
+        };
+      }
       // If table doesn't have file_url / file_path columns yet, retry with base payload
       delete payload.file_url;
       delete payload.file_path;
@@ -740,6 +786,37 @@ export const updateDocumentInSupabase = async (doc: DocumentRecord): Promise<boo
   try {
     const validId = ensureUUID(doc.id);
     const validSiteId = ensureUUID(doc.siteId);
+
+    // Duplicate check prior to update
+    const localDocs = getStoredDocuments();
+    const localDuplicate = findDatabaseDuplicate(doc, localDocs, validId);
+    if (localDuplicate) {
+      console.warn('Update blocked: Matches existing document:', localDuplicate.id);
+      return false;
+    }
+
+    const cleanVendor = doc.vendorName.trim();
+    const cleanInvoice = doc.invoiceNumber.trim();
+    const cleanDate = doc.date;
+    const cleanAmount = Number(doc.amount);
+
+    if (cleanVendor && cleanInvoice && cleanDate && !isNaN(cleanAmount)) {
+      const { data: remoteMatches } = await supabase
+        .from('documents')
+        .select('id, vendor_name, invoice_number, date, amount')
+        .ilike('vendor_name', cleanVendor)
+        .ilike('invoice_number', cleanInvoice)
+        .eq('date', cleanDate)
+        .eq('amount', cleanAmount);
+
+      if (remoteMatches && remoteMatches.length > 0) {
+        const conflict = remoteMatches.find((m) => m.id !== validId);
+        if (conflict) {
+          console.warn('Update blocked: remote document duplicate exists:', conflict.id);
+          return false;
+        }
+      }
+    }
 
     const { error } = await supabase
       .from('documents')

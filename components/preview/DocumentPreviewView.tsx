@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { DocumentRecord, SiteRecord, UserAccount, DocumentType, DocumentStatus } from '@/lib/types';
-import { formatCurrency, formatDate, formatFileSize } from '@/lib/utils';
-import { uploadFileToSupabaseStorage } from '@/lib/store';
+import { formatCurrency, formatDate, formatFileSize, findDatabaseDuplicate } from '@/lib/utils';
+import { uploadFileToSupabaseStorage, getStoredDocuments } from '@/lib/store';
 import { Icons } from '../ui/icons';
 
 interface DocumentPreviewViewProps {
@@ -10,6 +10,7 @@ interface DocumentPreviewViewProps {
   siteMap: Map<string, SiteRecord>;
   currentUser: UserAccount;
   initialEditMode?: boolean;
+  existingDocuments?: DocumentRecord[];
   onBack: () => void;
   onVerify: (docId: string) => void;
   onSaveDocument: (updatedDoc: DocumentRecord) => Promise<void> | void;
@@ -22,6 +23,7 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
   siteMap,
   currentUser,
   initialEditMode = false,
+  existingDocuments,
   onBack,
   onVerify,
   onSaveDocument,
@@ -148,9 +150,35 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
     /\.(jpg|jpeg|png|webp|gif)$/i.test(activeDocument.fileName || '') ||
     /\.(jpg|jpeg|png|webp|gif)$/i.test(activeDocument.fileUrl || '');
 
+  // Real-time Duplicate Detection against existing documents (vendor + invoice # + date + amount)
+  const duplicateMatch = useMemo(() => {
+    const parsedAmount = parseFloat(amount);
+    if (!vendorName.trim() || !invoiceNumber.trim() || !date || isNaN(parsedAmount)) {
+      return null;
+    }
+    const pool = existingDocuments && existingDocuments.length > 0 ? existingDocuments : getStoredDocuments();
+    return findDatabaseDuplicate(
+      {
+        vendorName: vendorName.trim(),
+        invoiceNumber: invoiceNumber.trim(),
+        date,
+        amount: parsedAmount,
+      },
+      pool,
+      activeDocument.id
+    );
+  }, [vendorName, invoiceNumber, date, amount, existingDocuments, activeDocument.id]);
+
   const handleSaveSidebar = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!vendorName.trim() || !amount) return;
+
+    if (duplicateMatch) {
+      alert(
+        `Duplicate Conflict Detected!\n\nA document with the same Vendor Name ("${duplicateMatch.vendorName}"), Invoice Number ("${duplicateMatch.invoiceNumber}"), Date ("${duplicateMatch.date}"), and Amount (₹${duplicateMatch.amount.toLocaleString()}) already exists in the system.`
+      );
+      return;
+    }
 
     setIsSaving(true);
     const parsedAmount = parseFloat(amount) || 0;
@@ -552,7 +580,9 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
                   required
                   value={vendorName}
                   onChange={(e) => setVendorName(e.target.value)}
-                  className="w-full bg-background border border-input rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  className={`w-full bg-background border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 ${
+                    duplicateMatch ? 'border-destructive/60 focus:ring-destructive' : 'border-input focus:ring-ring'
+                  }`}
                 />
               </div>
 
@@ -589,7 +619,9 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
                     placeholder={type === 'Ledger' ? '01-Apr-2023 to 31-Mar-2024' : 'Reference #'}
                     value={invoiceNumber}
                     onChange={(e) => setInvoiceNumber(e.target.value)}
-                    className="w-full bg-background border border-input rounded-xl px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    className={`w-full bg-background border rounded-xl px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 ${
+                      duplicateMatch ? 'border-destructive/60 focus:ring-destructive' : 'border-input focus:ring-ring'
+                    }`}
                   />
                 </div>
               </div>
@@ -604,7 +636,9 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
                     required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full bg-background border border-input rounded-xl px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    className={`w-full bg-background border rounded-xl px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 ${
+                      duplicateMatch ? 'border-destructive/60 focus:ring-destructive' : 'border-input focus:ring-ring'
+                    }`}
                   />
                 </div>
 
@@ -622,10 +656,25 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
                     required
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full bg-background border border-input rounded-xl px-3 py-2 text-xs font-mono text-emerald-400 font-bold focus:outline-none focus:ring-1 focus:ring-ring"
+                    className={`w-full bg-background border rounded-xl px-3 py-2 text-xs font-mono text-emerald-400 font-bold focus:outline-none focus:ring-1 ${
+                      duplicateMatch ? 'border-destructive/60 focus:ring-destructive' : 'border-input focus:ring-ring'
+                    }`}
                   />
                 </div>
               </div>
+
+              {/* Real-time Duplicate Alert Banner */}
+              {duplicateMatch && (
+                <div className="p-3 bg-destructive/15 border border-destructive/30 rounded-xl text-destructive text-xs space-y-1 animate-in fade-in duration-200">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <Icons.AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+                    <span>Exact Duplicate Conflict</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-destructive/90">
+                    A record with matching Vendor (&quot;{duplicateMatch.vendorName}&quot;), Invoice # (&quot;{duplicateMatch.invoiceNumber}&quot;), Date ({duplicateMatch.date}), and Amount (₹{duplicateMatch.amount.toLocaleString()}) already exists.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
@@ -644,10 +693,10 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
               <div className="pt-3 border-t border-border space-y-2">
                 <button
                   type="submit"
-                  disabled={isSaving}
-                  className="w-full bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground font-bold text-xs py-2.5 rounded-xl transition-all shadow flex items-center justify-center gap-1.5 cursor-pointer"
+                  disabled={isSaving || !!duplicateMatch}
+                  className="w-full bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 text-primary-foreground font-bold text-xs py-2.5 rounded-xl transition-all shadow flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  {isSaving ? 'Saving...' : 'Save Changes'}
+                  {isSaving ? 'Saving...' : duplicateMatch ? 'Resolve Duplicate to Save' : 'Save Changes'}
                 </button>
                 <button
                   type="button"

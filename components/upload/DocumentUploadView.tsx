@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { SiteRecord, UserAccount, DocumentRecord, DocumentType } from '@/lib/types';
-import { formatCurrency, formatFileSize, generateUUID, optimizeImageForAi } from '@/lib/utils';
-import { uploadFileToSupabaseStorage, saveDocumentToSupabase } from '@/lib/store';
+import { formatCurrency, formatFileSize, generateUUID, optimizeImageForAi, getDocumentFingerprint, findDatabaseDuplicate } from '@/lib/utils';
+import { uploadFileToSupabaseStorage, saveDocumentToSupabase, getStoredDocuments } from '@/lib/store';
 import { Icons } from '../ui/icons';
 
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 Megabytes per file
@@ -33,6 +33,7 @@ export interface InvoiceDraftItem {
 interface DocumentUploadViewProps {
   currentUser: UserAccount;
   sites: SiteRecord[];
+  existingDocuments?: DocumentRecord[];
   selectedSiteId?: string;
   onSiteChange?: (newSiteId: string) => void;
   onCancel: () => void;
@@ -42,6 +43,7 @@ interface DocumentUploadViewProps {
 export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
   currentUser,
   sites,
+  existingDocuments,
   selectedSiteId,
   onSiteChange,
   onCancel,
@@ -90,6 +92,71 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
 
   // Active Review Draft Persistence State
   const [isDraftRestored, setIsDraftRestored] = useState<boolean>(false);
+  const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState<boolean>(false);
+
+  // Fallback to locally stored documents if existingDocuments prop is empty
+  const allKnownDocuments = useMemo<DocumentRecord[]>(() => {
+    if (existingDocuments && existingDocuments.length > 0) return existingDocuments;
+    return getStoredDocuments();
+  }, [existingDocuments]);
+
+  // Compute duplicate status for each invoice in the active draft batch
+  const invoiceDuplicateMap = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        isDuplicate: boolean;
+        type?: 'database' | 'batch';
+        matchedExistingDoc?: DocumentRecord;
+        matchedBatchIndex?: number;
+      }
+    >();
+
+    const seenBatchFingerprints = new Map<string, number>();
+
+    invoices.forEach((inv, idx) => {
+      const fp = getDocumentFingerprint(inv);
+      if (!fp) {
+        map.set(inv.id, { isDuplicate: false });
+        return;
+      }
+
+      // Check intra-batch duplicates (another invoice in this same batch)
+      if (seenBatchFingerprints.has(fp)) {
+        const firstIdx = seenBatchFingerprints.get(fp)!;
+        map.set(inv.id, {
+          isDuplicate: true,
+          type: 'batch',
+          matchedBatchIndex: firstIdx + 1,
+        });
+        return;
+      }
+      seenBatchFingerprints.set(fp, idx);
+
+      // Check database duplicates (existing document with same name, invoice #, date, amount)
+      const dbMatch = findDatabaseDuplicate<DocumentRecord>(inv, allKnownDocuments);
+      if (dbMatch) {
+        map.set(inv.id, {
+          isDuplicate: true,
+          type: 'database',
+          matchedExistingDoc: dbMatch,
+        });
+        return;
+      }
+
+      map.set(inv.id, { isDuplicate: false });
+    });
+
+    return map;
+  }, [invoices, allKnownDocuments]);
+
+  const duplicateInvoicesCount = useMemo(() => {
+    let count = 0;
+    invoiceDuplicateMap.forEach((info: { isDuplicate: boolean }) => {
+      if (info.isDuplicate) count++;
+    });
+    return count;
+  }, [invoiceDuplicateMap]);
 
   // Review Assistance & Scroll Synchronization Refs
   const invoiceListContainerRef = useRef<HTMLDivElement>(null);
@@ -849,36 +916,13 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
     }
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    // Core upload execution for a validated list of invoices
+  const executeUpload = async (invoicesToUpload: InvoiceDraftItem[]) => {
     if (!currentUser) return;
-
-    if (sites.length === 0) {
-      alert('Please ask the Administrator to create at least one Construction Site first.');
-      return;
-    }
-
-    if (uploadedFiles.length === 0) {
-      alert('Please select or drop at least one document (PDF/Image) to upload.');
-      return;
-    }
-
-    if (invoices.length === 0) {
-      alert('Please define at least one invoice specification.');
-      return;
-    }
-
-    // Validate that all invoices have vendorName and amount
-    const invalidIndex = invoices.findIndex((inv) => !inv.vendorName.trim() || !inv.amount.trim());
-    if (invalidIndex !== -1) {
-      alert(`Please fill in both Vendor Name and Amount for Invoice #${invalidIndex + 1}.`);
-      return;
-    }
-
     setUploadPhase('uploading');
     setUploadProgress(10);
     setUploadStatusText(
-      `Step 1/3: Preparing upload for ${uploadedFiles.length} file(s) and ${invoices.length} invoice(s)...`
+      `Step 1/3: Preparing upload for ${uploadedFiles.length} file(s) and ${invoicesToUpload.length} invoice(s)...`
     );
     setUploadErrorMessage(null);
 
@@ -908,9 +952,9 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
 
     // Step 3: Create DocumentRecord for EACH invoice, mapped to its source file's URL
     setUploadProgress(70);
-    setUploadStatusText(`Step 3/3: Indexing ${invoices.length} document record(s) in cloud database...`);
+    setUploadStatusText(`Step 3/3: Indexing ${invoicesToUpload.length} document record(s) in cloud database...`);
 
-    const createdDocs: DocumentRecord[] = invoices.map((inv, idx) => {
+    const createdDocs: DocumentRecord[] = invoicesToUpload.map((inv, idx) => {
       const sourceFile = uploadedFiles.find((f) => f.id === inv.fileId) || uploadedFiles[0];
       const storageInfo = fileUploadMap.get(inv.fileId) || {};
 
@@ -928,7 +972,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
         createdAt: new Date().toISOString(),
         fileName: sourceFile ? sourceFile.file.name : 'Uploaded_Scan.pdf',
         fileData: sourceFile?.fileData || undefined,
-        fileUrl: storageInfo.publicUrl, // Same storage URL for all invoices from this file
+        fileUrl: storageInfo.publicUrl,
         filePath: storageInfo.filePath,
         fileType: sourceFile?.fileType || 'application/pdf',
         fileSize: sourceFile?.fileSize || 0,
@@ -945,7 +989,6 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
       setUploadPhase('success');
       clearActiveDraft();
 
-      // Seamless redirect to dashboard
       setTimeout(() => {
         onUploadSuccess(createdDocs);
       }, 1600);
@@ -958,6 +1001,52 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
       );
       setCreatedDocRecords(createdDocs);
     }
+  };
+
+  const handleProceedExcludingDuplicates = async () => {
+    setIsDuplicateModalOpen(false);
+    const cleanInvoices = invoices.filter((inv) => !invoiceDuplicateMap.get(inv.id)?.isDuplicate);
+    if (cleanInvoices.length === 0) {
+      alert('All documents in this batch are duplicates. Please modify or remove them before uploading.');
+      return;
+    }
+    setInvoices(cleanInvoices);
+    await executeUpload(cleanInvoices);
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+
+    if (sites.length === 0) {
+      alert('Please ask the Administrator to create at least one Construction Site first.');
+      return;
+    }
+
+    if (uploadedFiles.length === 0) {
+      alert('Please select or drop at least one document (PDF/Image) to upload.');
+      return;
+    }
+
+    if (invoices.length === 0) {
+      alert('Please define at least one invoice specification.');
+      return;
+    }
+
+    // Validate that all invoices have vendorName and amount
+    const invalidIndex = invoices.findIndex((inv) => !inv.vendorName.trim() || !inv.amount.trim());
+    if (invalidIndex !== -1) {
+      alert(`Please fill in both Vendor Name and Amount for Invoice #${invalidIndex + 1}.`);
+      return;
+    }
+
+    // Intercept if duplicates exist
+    if (duplicateInvoicesCount > 0) {
+      setIsDuplicateModalOpen(true);
+      return;
+    }
+
+    await executeUpload(invoices);
   };
 
   const handleSaveOfflineFallback = () => {
@@ -1724,6 +1813,14 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                               >
                                 #{index + 1}
                               </span>
+                              {/* Duplicate Flag Badge */}
+                              {invoiceDuplicateMap.get(inv.id)?.isDuplicate && (
+                                <span className="text-[10px] font-bold uppercase tracking-wider bg-destructive/15 text-destructive border border-destructive/30 px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0">
+                                  <Icons.AlertTriangle className="w-3 h-3 stroke-[2.5]" />
+                                  <span>Duplicate</span>
+                                </span>
+                              )}
+
                               <span className="text-xs font-bold text-white truncate">
                                 {inv.type === 'Ledger'
                                   ? inv.invoiceNumber
@@ -1827,6 +1924,28 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                           </div>
 
                           {/* Fields */}
+                          {/* Duplicate Inline Warning Banner */}
+                          {invoiceDuplicateMap.get(inv.id)?.isDuplicate && (
+                            <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-xl text-xs space-y-1 animate-in fade-in">
+                              <div className="flex items-center gap-1.5 font-bold text-destructive">
+                                <Icons.AlertTriangle className="w-4 h-4 shrink-0" />
+                                <span>Duplicate Entry Detected</span>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                {invoiceDuplicateMap.get(inv.id)?.type === 'batch' ? (
+                                  <>Matches <strong>Item #{invoiceDuplicateMap.get(inv.id)?.matchedBatchIndex}</strong> in this upload batch with identical Vendor Name, Invoice #, Date, and Amount.</>
+                                ) : (
+                                  <>
+                                    Identical document already exists in your database:
+                                    <span className="font-mono text-foreground block mt-0.5 font-semibold">
+                                      {invoiceDuplicateMap.get(inv.id)?.matchedExistingDoc?.vendorName} • #{invoiceDuplicateMap.get(inv.id)?.matchedExistingDoc?.invoiceNumber} • {invoiceDuplicateMap.get(inv.id)?.matchedExistingDoc?.date} • {formatCurrency(invoiceDuplicateMap.get(inv.id)?.matchedExistingDoc?.amount || 0)}
+                                    </span>
+                                  </>
+                                )}
+                              </p>
+                            </div>
+                          )}
+
                           <div className="space-y-3.5">
                             <div>
                               <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
@@ -1842,7 +1961,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                                 onChange={(e) =>
                                   handleUpdateInvoice(index, 'vendorName', e.target.value)
                                 }
-                                className="w-full bg-background border border-input focus:ring-1 focus:ring-ring rounded-xl px-3.5 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors"
+                                className={`w-full bg-background border rounded-xl px-3.5 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors ${invoiceDuplicateMap.get(inv.id)?.isDuplicate ? "border-destructive/60 focus:ring-1 focus:ring-destructive/60" : "border-input focus:ring-1 focus:ring-ring"}`}
                               />
                             </div>
 
@@ -2037,7 +2156,9 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                         Uploading ({uploadProgress}%)...
                       </>
                     ) : invoices.length > 1 ? (
-                      `Save & Upload ${invoices.length} Invoices (${uploadedFiles.length} files)`
+                      duplicateInvoicesCount > 0
+                        ? `Resolve ${duplicateInvoicesCount} Duplicate${duplicateInvoicesCount > 1 ? 's' : ''} to Upload`
+                        : `Save & Upload ${invoices.length} Invoices (${uploadedFiles.length} files)`
                     ) : (
                       'Save & Upload Document'
                     )}
@@ -2056,6 +2177,123 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
           </div>
         </div>
       </div>
+      {/* 3. Duplicate Resolution Interception Modal */}
+      {isDuplicateModalOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-card border border-border rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 border-b border-border flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-destructive/15 text-destructive border border-destructive/30 flex items-center justify-center shrink-0">
+                  <Icons.AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-foreground">
+                    Duplicate Documents Detected ({duplicateInvoicesCount})
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Matching Vendor Name, Invoice #, Date, and Amount are blocked
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDuplicateModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground p-2 rounded-xl hover:bg-secondary transition-all cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Conflicting List */}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-3.5 custom-scrollbar flex-1">
+              <div className="text-xs text-muted-foreground bg-muted/40 p-3 rounded-xl border border-border">
+                The following {duplicateInvoicesCount} invoice(s) cannot be uploaded because identical records already exist in your system or duplicate each other in this batch:
+              </div>
+
+              {invoices
+                .map((inv, idx) => ({ inv, idx, dup: invoiceDuplicateMap.get(inv.id) }))
+                .filter(({ dup }) => dup?.isDuplicate)
+                .map(({ inv, idx, dup }) => (
+                  <div
+                    key={inv.id}
+                    className="p-3.5 rounded-2xl bg-muted/30 border border-destructive/30 space-y-2.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-md bg-destructive/15 text-destructive flex items-center justify-center text-[10px] font-bold">
+                          #{idx + 1}
+                        </span>
+                        <span>{inv.vendorName || 'Unnamed Vendor'}</span>
+                      </span>
+                      <span className="text-[10px] font-mono font-bold bg-destructive/20 text-destructive px-2 py-0.5 rounded border border-destructive/30">
+                        {dup?.type === 'batch' ? `Matches Item #${dup.matchedBatchIndex}` : 'Already in Database'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono bg-background p-2.5 rounded-xl border border-border">
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block font-sans">Vendor</span>
+                        <span className="truncate block font-semibold text-foreground">{inv.vendorName}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block font-sans">Invoice #</span>
+                        <span className="truncate block font-semibold text-foreground">{inv.invoiceNumber}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block font-sans">Date</span>
+                        <span className="truncate block font-semibold text-foreground">{inv.date}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block font-sans">Amount</span>
+                        <span className="truncate block font-semibold text-emerald-400 font-bold">{formatCurrency(parseFloat(inv.amount) || 0)}</span>
+                      </div>
+                    </div>
+
+                    {dup?.type === 'database' && dup.matchedExistingDoc && (
+                      <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+                        <span>Database match:</span>
+                        <span className="font-mono text-foreground font-semibold">
+                          Doc #{dup.matchedExistingDoc.invoiceNumber} • {dup.matchedExistingDoc.date} • {formatCurrency(dup.matchedExistingDoc.amount)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-5 sm:p-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3 bg-card">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDuplicateModalOpen(false);
+                  const firstDup = invoices.find((inv) => invoiceDuplicateMap.get(inv.id)?.isDuplicate);
+                  if (firstDup) {
+                    setActiveFileId(firstDup.fileId);
+                    scrollToInvoiceForFile(firstDup.fileId);
+                  }
+                }}
+                className="w-full sm:w-auto bg-secondary hover:bg-accent text-secondary-foreground font-semibold text-xs py-2.5 px-4 rounded-xl border border-border transition-all cursor-pointer"
+              >
+                Review & Fix in Form
+              </button>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                {invoices.length > duplicateInvoicesCount && (
+                  <button
+                    type="button"
+                    onClick={handleProceedExcludingDuplicates}
+                    className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs py-2.5 px-4 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+                  >
+                    Exclude Duplicates & Upload Unique ({invoices.length - duplicateInvoicesCount})
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

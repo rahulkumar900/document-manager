@@ -113,3 +113,62 @@ export const optimizeImageForAi = async (file: File): Promise<File> => {
     img.src = url;
   });
 };
+
+export interface DuplicateMatchFields {
+  vendorName: string;
+  invoiceNumber: string;
+  date: string;
+  amount: number | string;
+}
+
+/**
+ * Computes a standardized fingerprint for duplicate prevention based ONLY on:
+ * 1. vendorName (trimmed, lowercased)
+ * 2. invoiceNumber (trimmed, lowercased)
+ * 3. date (trimmed YYYY-MM-DD)
+ * 4. amount (numeric 2-decimal rounded)
+ */
+export const getDocumentFingerprint = (item: DuplicateMatchFields): string => {
+  const normVendor = (item.vendorName || '').trim().toLowerCase();
+  const normInvoice = (item.invoiceNumber || '').trim().toLowerCase();
+  const normDate = (item.date || '').trim();
+  const numAmount = parseFloat(String(item.amount || '0')) || 0;
+  const normAmount = numAmount.toFixed(2);
+
+  if (!normVendor || !normInvoice || !normDate || isNaN(numAmount) || numAmount < 0) {
+    return '';
+  }
+
+  return `${normVendor}:::${normInvoice}:::${normDate}:::${normAmount}`;
+};
+
+/**
+ * Checks if two items are duplicates based strictly on matching name, invoicenumber, date, and amount.
+ */
+export const isDuplicateDocument = (
+  a: DuplicateMatchFields,
+  b: DuplicateMatchFields
+): boolean => {
+  const fpA = getDocumentFingerprint(a);
+  const fpB = getDocumentFingerprint(b);
+  return fpA !== '' && fpB !== '' && fpA === fpB;
+};
+
+/**
+ * Checks if a candidate document matches any existing document in the database/list.
+ */
+export const findDatabaseDuplicate = <T extends DuplicateMatchFields & { id?: string }>(
+  candidate: DuplicateMatchFields,
+  existingDocs: T[],
+  excludeId?: string
+): T | undefined => {
+  const candidateFp = getDocumentFingerprint(candidate);
+  if (!candidateFp) return undefined;
+
+  return existingDocs.find((doc) => {
+    if (excludeId && doc.id === excludeId) return false;
+    const docFp = getDocumentFingerprint(doc);
+    return docFp === candidateFp;
+  });
+};
+
