@@ -96,7 +96,7 @@ function DocumentPortalContent() {
           (key === 'site' && val === 'all') ||
           (key === 'page' && val === '1') ||
           (key === 'layout' && val === 'grid') ||
-          (key === 'view' && val === 'dashboard')
+          (key === 'view' && val === 'documents')
         ) {
           params.delete(key);
         } else {
@@ -217,8 +217,8 @@ function DocumentPortalContent() {
               return profile;
             });
             saveSession(profile);
-            // Only transition to dashboard if user was strictly on the auth/login view
-            setCurrentView((prev) => (prev === 'auth' ? 'dashboard' : prev));
+            // Only transition to documents if user was strictly on the auth/login view
+            setCurrentView((prev) => (prev === 'auth' ? 'documents' : prev));
           }
         }
       } else if (event === 'SIGNED_OUT') {
@@ -246,8 +246,8 @@ function DocumentPortalContent() {
       if (viewParam && ['auth', 'dashboard', 'documents', 'upload', 'preview'].includes(viewParam)) {
         setCurrentView((prev) => (prev !== viewParam ? viewParam : prev));
       } else {
-        // Only default to dashboard if currently on auth view
-        setCurrentView((prev) => (prev === 'auth' ? 'dashboard' : prev));
+        // Only default to documents if currently on auth view
+        setCurrentView((prev) => (prev === 'auth' ? 'documents' : prev));
       }
 
       // Sync Search Query
@@ -463,10 +463,10 @@ function DocumentPortalContent() {
   const handleLoginSuccess = (user: UserAccount) => {
     setCurrentUser(user);
     saveSession(user);
-    setCurrentView('dashboard');
+    setCurrentView('documents');
     setCurrentPage(1);
     setSelectedSiteFilter(user.assignedSiteId !== 'all' ? user.assignedSiteId : 'all');
-    updateUrlParams({ view: 'dashboard', site: user.assignedSiteId !== 'all' ? user.assignedSiteId : null });
+    updateUrlParams({ view: null, site: user.assignedSiteId !== 'all' ? user.assignedSiteId : null });
   };
 
   const handleLogout = async () => {
@@ -505,9 +505,9 @@ function DocumentPortalContent() {
     const updated = [...newDocsList, ...documents];
     setDocuments(updated);
     saveDocuments(updated);
-    setCurrentView('dashboard');
+    setCurrentView('documents');
     setCurrentPage(1);
-    updateUrlParams({ view: 'dashboard' });
+    updateUrlParams({ view: null });
   };
 
   const handleStartEditDocument = (doc: DocumentRecord) => {
@@ -565,8 +565,8 @@ function DocumentPortalContent() {
     if (activeDocumentId === doc.id) {
       setActiveDocumentId(null);
       setIsEditingSidebar(false);
-      setCurrentView('dashboard');
-      updateUrlParams({ view: 'dashboard', docId: null, edit: null });
+      setCurrentView('documents');
+      updateUrlParams({ view: null, docId: null, edit: null });
     }
 
     await deleteDocumentFromSupabase(doc.id, doc.filePath);
@@ -597,8 +597,8 @@ function DocumentPortalContent() {
         onBack={() => {
           setActiveDocumentId(null);
           setIsEditingSidebar(false);
-          setCurrentView('dashboard');
-          updateUrlParams({ view: 'dashboard', docId: null, edit: null });
+          setCurrentView('documents');
+          updateUrlParams({ view: null, docId: null, edit: null });
         }}
         onVerify={handleVerifyDocument}
         onSaveDocument={handleSaveEditDocument}
@@ -620,8 +620,8 @@ function DocumentPortalContent() {
           updateUrlParams({ site: newSiteId === 'all' ? null : newSiteId });
         }}
         onCancel={() => {
-          setCurrentView('dashboard');
-          updateUrlParams({ view: 'dashboard' });
+          setCurrentView('documents');
+          updateUrlParams({ view: null });
         }}
         onUploadSuccess={handleUploadSuccess}
       />
@@ -642,20 +642,22 @@ function DocumentPortalContent() {
         pendingDocCount={documents.filter((d) => d.status === 'uploaded').length}
         onTabChange={(tab) => {
           setCurrentView(tab);
-          updateUrlParams({ view: tab === 'dashboard' ? null : tab });
-        }}
-        onOpenUpload={() => {
-          setCurrentView('upload');
-          updateUrlParams({ view: 'upload' });
+          updateUrlParams({ view: tab === 'documents' ? null : tab });
         }}
         onOpenProfile={() => setIsProfileModalOpen(true)}
         onOpenAdminHub={() => setIsAdminHubOpen(true)}
         onLogout={handleLogout}
+        onNavigateHome={() => {
+          setCurrentView('documents');
+          setActiveDocumentId(null);
+          setIsEditingSidebar(false);
+          updateUrlParams({ view: null, docId: null, edit: null });
+        }}
         onNavigateDashboard={() => {
           setCurrentView('dashboard');
           setActiveDocumentId(null);
           setIsEditingSidebar(false);
-          updateUrlParams({ view: null, docId: null, edit: null });
+          updateUrlParams({ view: 'dashboard', docId: null, edit: null });
         }}
       />
 

@@ -15,24 +15,27 @@ interface NavbarProps {
   onOpenProfile: () => void;
   onOpenAdminHub: () => void;
   onLogout: () => void;
-  onNavigateDashboard: () => void;
+  onNavigateHome?: () => void;
+  onNavigateDashboard?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   currentUser,
   sites,
-  activeTab = 'dashboard',
+  activeTab = 'documents',
   totalDocCount,
   pendingDocCount,
   onTabChange,
-  onOpenUpload,
   onOpenProfile,
   onOpenAdminHub,
   onLogout,
+  onNavigateHome,
   onNavigateDashboard,
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleHomeClick = onNavigateHome || (() => onTabChange?.('documents')) || onNavigateDashboard;
 
   const assignedSite = sites.find((s) => s.id === currentUser.assignedSiteId);
 
@@ -62,10 +65,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-40 bg-card/90 backdrop-blur-xl border-b border-border transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-8 py-3 flex items-center justify-between gap-4">
-        {/* Brand & Logo */}
+        {/* Brand & Logo - Navigates to Documents (Default View) */}
         <div
-          onClick={onNavigateDashboard}
+          onClick={handleHomeClick}
           className="flex items-center space-x-3 cursor-pointer group select-none shrink-0"
+          title="Go to Documents"
         >
           <div className="w-9 h-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-bold shadow-md shadow-primary/20 transition-transform group-hover:scale-105">
             <Icons.Building className="w-4 h-4" />
@@ -83,26 +87,6 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Center Desktop Navigation Tabs */}
         {onTabChange && (
           <div className="hidden md:flex items-center gap-1 bg-muted/60 p-1 rounded-2xl border border-border shadow-inner">
-            <button
-              type="button"
-              onClick={() => onTabChange('dashboard')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                activeTab === 'dashboard'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-              }`}
-            >
-              <Icons.Building className="w-3.5 h-3.5" />
-              <span>Dashboard</span>
-              {pendingDocCount !== undefined && pendingDocCount > 0 && (
-                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-md ${
-                  activeTab === 'dashboard' ? 'bg-amber-400 text-black' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                }`}>
-                  {pendingDocCount}
-                </span>
-              )}
-            </button>
-
             <button
               type="button"
               onClick={() => onTabChange('documents')}
@@ -123,17 +107,25 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </button>
 
-            {onOpenUpload && (
-              <button
-                type="button"
-                onClick={onOpenUpload}
-                className="ml-1 px-3 py-1.5 rounded-xl text-xs font-bold text-foreground hover:bg-accent/60 border border-border/80 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
-                title="Upload new document"
-              >
-                <Icons.Plus className="w-3.5 h-3.5" />
-                <span>Upload</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => onTabChange('dashboard')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'dashboard'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+              }`}
+            >
+              <Icons.Building className="w-3.5 h-3.5" />
+              <span>Dashboard</span>
+              {pendingDocCount !== undefined && pendingDocCount > 0 && (
+                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-md ${
+                  activeTab === 'dashboard' ? 'bg-amber-400 text-black' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                }`}>
+                  {pendingDocCount}
+                </span>
+              )}
+            </button>
           </div>
         )}
 
@@ -222,6 +214,41 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                 {/* Dropdown Menu Items */}
                 <div className="p-1.5 space-y-0.5">
+                  {/* Dashboard Option Inside Profile Card */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      if (onTabChange) {
+                        onTabChange('dashboard');
+                      } else if (onNavigateDashboard) {
+                        onNavigateDashboard();
+                      }
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer group ${
+                      activeTab === 'dashboard'
+                        ? 'bg-primary/10 text-primary font-bold'
+                        : 'text-foreground hover:bg-accent'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-lg bg-muted group-hover:bg-primary group-hover:text-primary-foreground text-muted-foreground flex items-center justify-center transition-colors">
+                        <Icons.Building className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <div className="font-bold">Dashboard</div>
+                        <div className="text-[10px] text-muted-foreground font-normal">
+                          Analytics, charts & site overview
+                        </div>
+                      </div>
+                    </div>
+                    {pendingDocCount !== undefined && pendingDocCount > 0 && (
+                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-amber-400 text-black shadow-sm">
+                        {pendingDocCount}
+                      </span>
+                    )}
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -294,26 +321,6 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="md:hidden border-t border-border/80 bg-card/95 px-3 py-2 flex items-center gap-2 shadow-md">
           <button
             type="button"
-            onClick={() => onTabChange('dashboard')}
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'dashboard'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground bg-muted/50'
-            }`}
-          >
-            <Icons.Building className="w-3.5 h-3.5" />
-            <span>Dashboard</span>
-            {pendingDocCount !== undefined && pendingDocCount > 0 && (
-              <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-md ${
-                activeTab === 'dashboard' ? 'bg-amber-400 text-black' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-              }`}>
-                {pendingDocCount}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
             onClick={() => onTabChange('documents')}
             className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'documents'
@@ -328,6 +335,26 @@ export const Navbar: React.FC<NavbarProps> = ({
                 activeTab === 'documents' ? 'bg-secondary text-secondary-foreground' : 'bg-card text-muted-foreground border border-border'
               }`}>
                 {totalDocCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onTabChange('dashboard')}
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === 'dashboard'
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground bg-muted/50'
+            }`}
+          >
+            <Icons.Building className="w-3.5 h-3.5" />
+            <span>Dashboard</span>
+            {pendingDocCount !== undefined && pendingDocCount > 0 && (
+              <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-md ${
+                activeTab === 'dashboard' ? 'bg-amber-400 text-black' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+              }`}>
+                {pendingDocCount}
               </span>
             )}
           </button>
