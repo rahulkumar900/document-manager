@@ -122,9 +122,9 @@ function normalizeDateString(rawDate: string): string {
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Rate limiting check (max 100 requests per minute per IP to accommodate batch uploads)
+    // 1. Rate limiting check (Pro-Tier: up to 500 requests per minute per IP to accommodate high-speed parallel batch uploads)
     const clientIp = getClientIp(req);
-    const rateLimitResult = checkRateLimit(clientIp, 100, 60000);
+    const rateLimitResult = checkRateLimit(clientIp, 500, 60000);
     if (rateLimitResult.isLimited) {
       return NextResponse.json(
         {
