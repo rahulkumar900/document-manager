@@ -6,6 +6,10 @@ import { ErrorFallback } from './ErrorFallback';
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  title?: string;
+  message?: string;
+  compact?: boolean;
+  className?: string;
   onReset?: () => void;
 }
 
@@ -42,9 +46,11 @@ export class ErrorBoundary extends Component<Props, State> {
       }
       return (
         <ErrorFallback
-          title="Application Encountered an Error"
-          message={this.state.error?.message || 'An unexpected rendering error occurred.'}
+          title={this.props.title || "Section Encountered an Error"}
+          message={this.props.message || this.state.error?.message || 'An unexpected rendering error occurred.'}
           onRetry={this.handleReset}
+          compact={this.props.compact}
+          className={this.props.className}
           fullscreen={false}
         />
       );

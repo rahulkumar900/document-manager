@@ -665,177 +665,193 @@ function DocumentPortalContent() {
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-8 py-6 sm:py-8">
         {!isDocumentsView ? (
           /* TAB 1: Analytics Dashboard */
-          <DashboardAnalyticsView
-            currentUser={currentUser}
-            sites={sites}
-            documents={documents}
-            onNavigateDocuments={(siteIdFilter, typeFilter) => {
-              if (siteIdFilter) {
-                setSelectedSiteFilter(siteIdFilter);
-              }
-              if (typeFilter) {
-                setFilterRules([
-                  {
-                    id: 'type-' + Date.now(),
-                    key: 'type',
-                    operator: 'equals',
-                    value: typeFilter,
-                  },
-                ]);
-              }
-              setCurrentPage(1);
-              setCurrentView('documents');
-              updateUrlParams({
-                view: 'documents',
-                site: siteIdFilter && siteIdFilter !== 'all' ? siteIdFilter : null,
-                page: null,
-              });
-            }}
-            onOpenUpload={() => {
-              setCurrentView('upload');
-              updateUrlParams({ view: 'upload' });
-            }}
-            onSelectDocument={(doc) => {
-              setActiveDocumentId(doc.id);
-              setIsEditingSidebar(false);
-              setCurrentView('preview');
-              updateUrlParams({ view: 'preview', docId: doc.id, edit: null });
-            }}
-          />
+          <ErrorBoundary
+            title="Dashboard Analytics Error"
+            message="An error occurred while rendering the dashboard metrics and charts. You can still access and manage documents in the Documents tab."
+          >
+            <DashboardAnalyticsView
+              currentUser={currentUser}
+              sites={sites}
+              documents={documents}
+              onNavigateDocuments={(siteIdFilter, typeFilter) => {
+                if (siteIdFilter) {
+                  setSelectedSiteFilter(siteIdFilter);
+                }
+                if (typeFilter) {
+                  setFilterRules([
+                    {
+                      id: 'type-' + Date.now(),
+                      key: 'type',
+                      operator: 'equals',
+                      value: typeFilter,
+                    },
+                  ]);
+                }
+                setCurrentPage(1);
+                setCurrentView('documents');
+                updateUrlParams({
+                  view: 'documents',
+                  site: siteIdFilter && siteIdFilter !== 'all' ? siteIdFilter : null,
+                  page: null,
+                });
+              }}
+              onOpenUpload={() => {
+                setCurrentView('upload');
+                updateUrlParams({ view: 'upload' });
+              }}
+              onSelectDocument={(doc) => {
+                setActiveDocumentId(doc.id);
+                setIsEditingSidebar(false);
+                setCurrentView('preview');
+                updateUrlParams({ view: 'preview', docId: doc.id, edit: null });
+              }}
+            />
+          </ErrorBoundary>
         ) : (
           /* TAB 2: Document Explorer & Listing */
           <div className="space-y-6 animate-in fade-in duration-300">
             {/* Search, Filter & Layout Controls */}
-            <DashboardFilters
-              currentUser={currentUser}
-              sites={sites}
-              siteMap={siteMap}
-              searchQuery={searchQuery}
-              onSearchChange={(q) => {
-                setSearchQuery(q);
-                setCurrentPage(1);
-                updateUrlParams({ q: q || null, page: null });
-              }}
-              selectedSiteFilter={selectedSiteFilter}
-              onSiteFilterChange={(siteId) => {
-                setSelectedSiteFilter(siteId);
-                setCurrentPage(1);
-                updateUrlParams({ site: siteId === 'all' ? null : siteId, page: null });
-              }}
-              filterRules={filterRules}
-              onApplyFilterRules={(newRules) => {
-                setFilterRules(newRules);
-                setCurrentPage(1);
-              }}
-              onRemoveFilterRule={(ruleId) => {
-                setFilterRules((prev) => prev.filter((r) => r.id !== ruleId));
-                setCurrentPage(1);
-              }}
-              onClearAllFilters={() => {
-                setFilterRules([]);
-                setSearchQuery('');
-                setSelectedSiteFilter(
-                  currentUser.assignedSiteId !== 'all' ? currentUser.assignedSiteId : 'all'
-                );
-                setCurrentPage(1);
-                updateUrlParams({ q: null, site: null });
-              }}
-              displayLayout={displayLayout}
-              onLayoutChange={(layout) => {
-                setDisplayLayout(layout);
-                updateUrlParams({ layout: layout === 'grid' ? null : layout });
-              }}
-              onStartUpload={() => {
-                setCurrentView('upload');
-                updateUrlParams({ view: 'upload' });
-              }}
-              onExportAll={handleExportAllFiltered}
-              onExportSelected={handleExportSelected}
-              selectedCount={selectedDocIds.size}
-              isExporting={isExporting}
-              totalDocumentCount={filteredDocuments.length}
-            />
-
-            {/* Document Grid or Table */}
-            {filteredDocuments.length === 0 ? (
-              <EmptyState
-                hasFilters={!!searchQuery || selectedSiteFilter !== 'all' || filterRules.length > 0}
-                onClearFilters={() => {
+            <ErrorBoundary
+              title="Filter Controls Error"
+              message="The document search and filter bar encountered an issue. Refresh to reload filters."
+              compact
+            >
+              <DashboardFilters
+                currentUser={currentUser}
+                sites={sites}
+                siteMap={siteMap}
+                searchQuery={searchQuery}
+                onSearchChange={(q) => {
+                  setSearchQuery(q);
+                  setCurrentPage(1);
+                  updateUrlParams({ q: q || null, page: null });
+                }}
+                selectedSiteFilter={selectedSiteFilter}
+                onSiteFilterChange={(siteId) => {
+                  setSelectedSiteFilter(siteId);
+                  setCurrentPage(1);
+                  updateUrlParams({ site: siteId === 'all' ? null : siteId, page: null });
+                }}
+                filterRules={filterRules}
+                onApplyFilterRules={(newRules) => {
+                  setFilterRules(newRules);
+                  setCurrentPage(1);
+                }}
+                onRemoveFilterRule={(ruleId) => {
+                  setFilterRules((prev) => prev.filter((r) => r.id !== ruleId));
+                  setCurrentPage(1);
+                }}
+                onClearAllFilters={() => {
                   setFilterRules([]);
                   setSearchQuery('');
                   setSelectedSiteFilter(
                     currentUser.assignedSiteId !== 'all' ? currentUser.assignedSiteId : 'all'
                   );
+                  setCurrentPage(1);
                   updateUrlParams({ q: null, site: null });
+                }}
+                displayLayout={displayLayout}
+                onLayoutChange={(layout) => {
+                  setDisplayLayout(layout);
+                  updateUrlParams({ layout: layout === 'grid' ? null : layout });
                 }}
                 onStartUpload={() => {
                   setCurrentView('upload');
                   updateUrlParams({ view: 'upload' });
                 }}
+                onExportAll={handleExportAllFiltered}
+                onExportSelected={handleExportSelected}
+                selectedCount={selectedDocIds.size}
+                isExporting={isExporting}
+                totalDocumentCount={filteredDocuments.length}
               />
-            ) : displayLayout === 'grid' ? (
-              <DocumentGrid
-                documents={paginatedDocuments}
-                siteMap={siteMap}
-                currentUser={currentUser}
-                selectedDocIds={selectedDocIds}
-                onToggleSelect={handleToggleSelectDoc}
-                onPreview={(docId) => {
-                  setActiveDocumentId(docId);
-                  setIsEditingSidebar(false);
-                  setCurrentView('preview');
-                  updateUrlParams({ view: 'preview', docId, edit: null });
-                }}
-                onVerify={handleVerifyDocument}
-                onEdit={handleStartEditDocument}
-                onDelete={handleDeleteDocument}
-              />
-            ) : (
-              <DocumentTable
-                documents={paginatedDocuments}
-                siteMap={siteMap}
-                currentUser={currentUser}
-                selectedDocIds={selectedDocIds}
-                onToggleSelect={handleToggleSelectDoc}
-                onToggleSelectPage={() => {
-                  if (isAllPageSelected) {
-                    const next = new Set(selectedDocIds);
-                    paginatedDocuments.forEach((d) => next.delete(d.id));
-                    setSelectedDocIds(next);
-                  } else {
-                    handleSelectAllPage();
-                  }
-                }}
-                isAllPageSelected={isAllPageSelected}
-                onPreview={(docId) => {
-                  setActiveDocumentId(docId);
-                  setIsEditingSidebar(false);
-                  setCurrentView('preview');
-                  updateUrlParams({ view: 'preview', docId, edit: null });
-                }}
-                onVerify={handleVerifyDocument}
-                onEdit={handleStartEditDocument}
-                onDelete={handleDeleteDocument}
-              />
-            )}
+            </ErrorBoundary>
 
-            {/* Pagination Controls */}
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={filteredDocuments.length}
-              pageSize={pageSize}
-              totalAmount={filteredDocuments.reduce((sum, d) => sum + (Number(d.amount) || 0), 0)}
-              onPageChange={(p) => {
-                setCurrentPage(p);
-                updateUrlParams({ page: p === 1 ? null : p.toString() });
-              }}
-              onPageSizeChange={(newSize) => {
-                setPageSize(newSize);
-                setCurrentPage(1);
-                updateUrlParams({ page: null, limit: newSize === 6 ? null : newSize.toString() });
-              }}
-            />
+            {/* Document Grid or Table */}
+            <ErrorBoundary
+              title="Document List Rendering Issue"
+              message="Failed to display documents. Try switching view layouts or refreshing."
+            >
+              {filteredDocuments.length === 0 ? (
+                <EmptyState
+                  hasFilters={!!searchQuery || selectedSiteFilter !== 'all' || filterRules.length > 0}
+                  onClearFilters={() => {
+                    setFilterRules([]);
+                    setSearchQuery('');
+                    setSelectedSiteFilter(
+                      currentUser.assignedSiteId !== 'all' ? currentUser.assignedSiteId : 'all'
+                    );
+                    updateUrlParams({ q: null, site: null });
+                  }}
+                  onStartUpload={() => {
+                    setCurrentView('upload');
+                    updateUrlParams({ view: 'upload' });
+                  }}
+                />
+              ) : displayLayout === 'grid' ? (
+                <DocumentGrid
+                  documents={paginatedDocuments}
+                  siteMap={siteMap}
+                  currentUser={currentUser}
+                  selectedDocIds={selectedDocIds}
+                  onToggleSelect={handleToggleSelectDoc}
+                  onPreview={(docId) => {
+                    setActiveDocumentId(docId);
+                    setIsEditingSidebar(false);
+                    setCurrentView('preview');
+                    updateUrlParams({ view: 'preview', docId, edit: null });
+                  }}
+                  onVerify={handleVerifyDocument}
+                  onEdit={handleStartEditDocument}
+                  onDelete={handleDeleteDocument}
+                />
+              ) : (
+                <DocumentTable
+                  documents={paginatedDocuments}
+                  siteMap={siteMap}
+                  currentUser={currentUser}
+                  selectedDocIds={selectedDocIds}
+                  onToggleSelect={handleToggleSelectDoc}
+                  onToggleSelectPage={() => {
+                    if (isAllPageSelected) {
+                      const next = new Set(selectedDocIds);
+                      paginatedDocuments.forEach((d) => next.delete(d.id));
+                      setSelectedDocIds(next);
+                    } else {
+                      handleSelectAllPage();
+                    }
+                  }}
+                  isAllPageSelected={isAllPageSelected}
+                  onPreview={(docId) => {
+                    setActiveDocumentId(docId);
+                    setIsEditingSidebar(false);
+                    setCurrentView('preview');
+                    updateUrlParams({ view: 'preview', docId, edit: null });
+                  }}
+                  onVerify={handleVerifyDocument}
+                  onEdit={handleStartEditDocument}
+                  onDelete={handleDeleteDocument}
+                />
+              )}
+
+              {/* Pagination Controls */}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredDocuments.length}
+                pageSize={pageSize}
+                totalAmount={filteredDocuments.reduce((sum, d) => sum + (Number(d.amount) || 0), 0)}
+                onPageChange={(p) => {
+                  setCurrentPage(p);
+                  updateUrlParams({ page: p > 1 ? String(p) : null });
+                }}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  setCurrentPage(1);
+                  updateUrlParams({ limit: newSize === 50 ? null : String(newSize), page: null });
+                }}
+              />
+            </ErrorBoundary>
           </div>
         )}
       </main>

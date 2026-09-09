@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { UserAccount, SiteRecord, DocumentRecord, DocumentType } from '@/lib/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Icons } from '../ui/icons';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 
 type TimePeriod = 'all' | '30d' | 'this_month' | 'this_year';
 
@@ -367,400 +368,442 @@ export const DashboardAnalyticsView: React.FC<DashboardAnalyticsViewProps> = ({
       {/* 2.5 Visual Analytics Charts: Spend Trend & Verification Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Chart 1: Monthly Spend & Document Volume Trend (2 Cols) */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-3xl p-6 shadow-xl space-y-4 flex flex-col justify-between">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-border">
-            <div>
+        <ErrorBoundary
+          title="Spend Trend Unavailable"
+          message="Could not render the monthly spend timeline chart."
+          compact
+          className="lg:col-span-2 min-h-[300px]"
+        >
+          <div className="lg:col-span-2 bg-card border border-border rounded-3xl p-6 shadow-xl space-y-4 flex flex-col justify-between h-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-border">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-primary/15 border border-primary/25 text-primary flex items-center justify-center">
+                    <Icons.BarChart className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
+                    Spend & Cash Flow Trend
+                  </h3>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Monthly breakdown of verified expenditure and pending obligations
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 text-[11px] font-medium">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block" />
+                  <span className="text-muted-foreground">Verified</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" />
+                  <span className="text-muted-foreground">Pending</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bar Chart Visualization */}
+            {monthlyTimelineData.points.every((p) => p.totalSpend === 0) ? (
+              <div className="h-56 flex flex-col items-center justify-center text-center p-6 bg-muted/20 rounded-2xl border border-dashed border-border">
+                <Icons.BarChart className="w-8 h-8 text-muted-foreground/50 mb-2" />
+                <p className="text-xs font-semibold text-muted-foreground">No historical transaction data found</p>
+                <p className="text-[11px] text-muted-foreground/70 mt-0.5">Upload invoices or select &quot;All Time&quot; to see trend graphs.</p>
+              </div>
+            ) : (
+              <div className="pt-4 space-y-4">
+                <div className="h-56 flex items-end justify-between gap-2 sm:gap-4 px-2">
+                  {monthlyTimelineData.points.map((pt, i) => {
+                    const heightPct = Math.max((pt.totalSpend / monthlyTimelineData.maxSpend) * 100, pt.totalSpend > 0 ? 8 : 2);
+                    const verifiedRatio = pt.totalSpend > 0 ? (pt.verified / pt.totalSpend) * 100 : 0;
+                    const pendingRatio = pt.totalSpend > 0 ? (pt.pending / pt.totalSpend) * 100 : 0;
+
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center h-full justify-end group relative cursor-pointer">
+                        {/* Tooltip on Hover */}
+                        <div className="absolute -top-14 opacity-0 group-hover:opacity-100 transition-all duration-150 pointer-events-none z-20 bg-popover text-popover-foreground border border-border px-2.5 py-1.5 rounded-xl shadow-2xl text-[11px] whitespace-nowrap">
+                          <div className="font-bold text-foreground">{pt.label}</div>
+                          <div className="font-mono text-emerald-400 font-bold">{formatCurrency(pt.totalSpend)}</div>
+                          <div className="text-[9px] text-muted-foreground">{pt.count} document{pt.count !== 1 ? 's' : ''}</div>
+                        </div>
+
+                        {/* Stacked Bar */}
+                        <div className="w-full max-w-[48px] rounded-t-xl overflow-hidden flex flex-col justify-end bg-muted/40 transition-all duration-300 group-hover:scale-105 group-hover:brightness-110 shadow-inner" style={{ height: `${heightPct}%` }}>
+                          {pt.pending > 0 && (
+                            <div
+                              className="w-full bg-amber-400/90 transition-all duration-300"
+                              style={{ height: `${pendingRatio}%` }}
+                              title={`Pending: ${formatCurrency(pt.pending)}`}
+                            />
+                          )}
+                          {pt.verified > 0 && (
+                            <div
+                              className="w-full bg-emerald-500 transition-all duration-300"
+                              style={{ height: `${verifiedRatio}%` }}
+                              title={`Verified: ${formatCurrency(pt.verified)}`}
+                            />
+                          )}
+                        </div>
+
+                        {/* Month Label */}
+                        <div className="text-[10px] font-mono text-muted-foreground font-bold mt-2 truncate w-full text-center">
+                          {pt.label}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Chart Footer summary */}
+                <div className="p-3 bg-muted/30 rounded-2xl border border-border flex items-center justify-between text-xs">
+                  <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                    <Icons.TrendingUp className="w-3.5 h-3.5 text-primary" />
+                    <span>Peak Month:</span>
+                    <strong className="text-foreground font-bold">
+                      {monthlyTimelineData.points.reduce((max, p) => p.totalSpend > max.totalSpend ? p : max, monthlyTimelineData.points[0])?.label || 'N/A'}
+                    </strong>
+                  </span>
+                  <span className="text-[11px] font-mono font-black text-foreground">
+                    {formatCurrency(monthlyTimelineData.maxSpend)} peak
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </ErrorBoundary>
+
+        {/* Chart 2: Category Spend Share Circular Ring / Ratio (1 Col) */}
+        <ErrorBoundary
+          title="Category Distribution Unavailable"
+          message="Could not render category proportion chart."
+          compact
+          className="min-h-[300px]"
+        >
+          <div className="bg-card border border-border rounded-3xl p-6 shadow-xl space-y-4 flex flex-col justify-between h-full">
+            <div className="pb-2 border-b border-border">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-primary/15 border border-primary/25 text-primary flex items-center justify-center">
-                  <Icons.BarChart className="w-4 h-4" />
+                  <Icons.PieChart className="w-4 h-4" />
                 </div>
                 <h3 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
-                  Spend & Cash Flow Trend
+                  Spend by Category
                 </h3>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Monthly breakdown of verified expenditure and pending obligations
+                Visual proportion of portfolio expenditure
               </p>
             </div>
 
-            <div className="flex items-center gap-3 text-[11px] font-medium">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block" />
-                <span className="text-muted-foreground">Verified</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" />
-                <span className="text-muted-foreground">Pending</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Bar Chart Visualization */}
-          {monthlyTimelineData.points.every((p) => p.totalSpend === 0) ? (
-            <div className="h-56 flex flex-col items-center justify-center text-center p-6 bg-muted/20 rounded-2xl border border-dashed border-border">
-              <Icons.BarChart className="w-8 h-8 text-muted-foreground/50 mb-2" />
-              <p className="text-xs font-semibold text-muted-foreground">No historical transaction data found</p>
-              <p className="text-[11px] text-muted-foreground/70 mt-0.5">Upload invoices or select &quot;All Time&quot; to see trend graphs.</p>
-            </div>
-          ) : (
-            <div className="pt-4 space-y-4">
-              <div className="h-56 flex items-end justify-between gap-2 sm:gap-4 px-2">
-                {monthlyTimelineData.points.map((pt, i) => {
-                  const heightPct = Math.max((pt.totalSpend / monthlyTimelineData.maxSpend) * 100, pt.totalSpend > 0 ? 8 : 2);
-                  const verifiedRatio = pt.totalSpend > 0 ? (pt.verified / pt.totalSpend) * 100 : 0;
-                  const pendingRatio = pt.totalSpend > 0 ? (pt.pending / pt.totalSpend) * 100 : 0;
-
-                  return (
-                    <div key={i} className="flex-1 flex flex-col items-center h-full justify-end group relative cursor-pointer">
-                      {/* Tooltip on Hover */}
-                      <div className="absolute -top-14 opacity-0 group-hover:opacity-100 transition-all duration-150 pointer-events-none z-20 bg-popover text-popover-foreground border border-border px-2.5 py-1.5 rounded-xl shadow-2xl text-[11px] whitespace-nowrap">
-                        <div className="font-bold text-foreground">{pt.label}</div>
-                        <div className="font-mono text-emerald-400 font-bold">{formatCurrency(pt.totalSpend)}</div>
-                        <div className="text-[9px] text-muted-foreground">{pt.count} document{pt.count !== 1 ? 's' : ''}</div>
+            {/* Dynamic Category Progress Bars */}
+            <div className="space-y-4 py-1">
+              {typeDistribution.map((item) => {
+                const share = item.percentage;
+                return (
+                  <div
+                    key={item.type}
+                    onClick={() => onNavigateDocuments(undefined, item.type)}
+                    className="space-y-1.5 cursor-pointer group"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${item.barClass}`} />
+                        <span className="font-bold text-foreground group-hover:underline truncate">
+                          {item.label}
+                        </span>
                       </div>
-
-                      {/* Stacked Bar */}
-                      <div className="w-full max-w-[48px] rounded-t-xl overflow-hidden flex flex-col justify-end bg-muted/40 transition-all duration-300 group-hover:scale-105 group-hover:brightness-110 shadow-inner" style={{ height: `${heightPct}%` }}>
-                        {pt.pending > 0 && (
-                          <div
-                            className="w-full bg-amber-400/90 transition-all duration-300"
-                            style={{ height: `${pendingRatio}%` }}
-                            title={`Pending: ${formatCurrency(pt.pending)}`}
-                          />
-                        )}
-                        {pt.verified > 0 && (
-                          <div
-                            className="w-full bg-emerald-500 transition-all duration-300"
-                            style={{ height: `${verifiedRatio}%` }}
-                            title={`Verified: ${formatCurrency(pt.verified)}`}
-                          />
-                        )}
-                      </div>
-
-                      {/* Month Label */}
-                      <div className="text-[10px] font-mono text-muted-foreground font-bold mt-2 truncate w-full text-center">
-                        {pt.label}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-mono text-muted-foreground">
+                          {share.toFixed(1)}%
+                        </span>
+                        <span className="font-mono font-bold text-foreground text-xs">
+                          {formatCurrency(item.totalAmount)}
+                        </span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
 
-              {/* Chart Footer summary */}
-              <div className="p-3 bg-muted/30 rounded-2xl border border-border flex items-center justify-between text-xs">
-                <span className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                  <Icons.TrendingUp className="w-3.5 h-3.5 text-primary" />
-                  <span>Peak Month:</span>
-                  <strong className="text-foreground font-bold">
-                    {monthlyTimelineData.points.reduce((max, p) => p.totalSpend > max.totalSpend ? p : max, monthlyTimelineData.points[0])?.label || 'N/A'}
-                  </strong>
-                </span>
-                <span className="text-[11px] font-mono font-black text-foreground">
-                  {formatCurrency(monthlyTimelineData.maxSpend)} peak
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Chart 2: Category Spend Share Circular Ring / Ratio (1 Col) */}
-        <div className="bg-card border border-border rounded-3xl p-6 shadow-xl space-y-4 flex flex-col justify-between">
-          <div className="pb-2 border-b border-border">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-primary/15 border border-primary/25 text-primary flex items-center justify-center">
-                <Icons.PieChart className="w-4 h-4" />
-              </div>
-              <h3 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
-                Spend by Category
-              </h3>
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Visual proportion of portfolio expenditure
-            </p>
-          </div>
-
-          {/* Dynamic Category Progress Bars */}
-          <div className="space-y-4 py-1">
-            {typeDistribution.map((item) => {
-              const share = item.percentage;
-              return (
-                <div
-                  key={item.type}
-                  onClick={() => onNavigateDocuments(undefined, item.type)}
-                  className="space-y-1.5 cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-full ${item.barClass}`} />
-                      <span className="font-bold text-foreground group-hover:underline truncate">
-                        {item.label}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-mono text-muted-foreground">
-                        {share.toFixed(1)}%
-                      </span>
-                      <span className="font-mono font-bold text-foreground text-xs">
-                        {formatCurrency(item.totalAmount)}
-                      </span>
+                    <div className="w-full h-2 bg-muted rounded-full overflow-hidden p-0.5">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${item.barClass}`}
+                        style={{ width: `${Math.max(share, 1.5)}%` }}
+                      />
                     </div>
                   </div>
+                );
+              })}
+            </div>
 
-                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden p-0.5">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${item.barClass}`}
-                      style={{ width: `${Math.max(share, 1.5)}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+            <div className="pt-2 border-t border-border flex items-center justify-between text-[11px] text-muted-foreground">
+              <span>Active Categories: <strong className="text-foreground">{typeDistribution.filter((t) => t.count > 0).length} of 4</strong></span>
+              <button
+                onClick={() => onNavigateDocuments()}
+                className="text-primary hover:underline font-bold cursor-pointer"
+              >
+                Filter in Explorer →
+              </button>
+            </div>
           </div>
-
-          <div className="pt-2 border-t border-border flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>Active Categories: <strong className="text-foreground">{typeDistribution.filter((t) => t.count > 0).length} of 4</strong></span>
-            <button
-              onClick={() => onNavigateDocuments()}
-              className="text-primary hover:underline font-bold cursor-pointer"
-            >
-              Filter in Explorer →
-            </button>
-          </div>
-        </div>
+        </ErrorBoundary>
       </div>
 
       {/* 3. Middle Section: Site Spend Allocation & Document Category Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Site Spend Breakdown */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-3xl p-6 shadow-xl space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm sm:text-base font-bold text-foreground tracking-tight flex items-center gap-2">
-                <Icons.Building className="w-4 h-4 text-primary" />
-                <span>Site Spend Breakdown</span>
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Financial allocation and invoice density across construction sites
-              </p>
-            </div>
-            <button
-              onClick={() => onNavigateDocuments()}
-              className="text-xs font-bold text-foreground hover:underline cursor-pointer"
-            >
-              View in Explorer →
-            </button>
-          </div>
-
-          <div className="space-y-3 pt-1">
-            {siteAnalytics.length === 0 ? (
-              <div className="p-8 text-center text-xs text-muted-foreground">
-                No construction sites registered yet.
+        <ErrorBoundary
+          title="Site Spend Breakdown Unavailable"
+          message="Could not compute site expenditure metrics."
+          compact
+          className="lg:col-span-2 min-h-[260px]"
+        >
+          <div className="lg:col-span-2 bg-card border border-border rounded-3xl p-6 shadow-xl space-y-4 h-full">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-foreground tracking-tight flex items-center gap-2">
+                  <Icons.Building className="w-4 h-4 text-primary" />
+                  <span>Site Spend Breakdown</span>
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Financial allocation and invoice density across construction sites
+                </p>
               </div>
-            ) : (
-              siteAnalytics.map((site) => (
-                <div
-                  key={site.id}
-                  onClick={() => onNavigateDocuments(site.id)}
-                  className="p-3.5 rounded-2xl bg-muted/30 hover:bg-muted/60 border border-border hover:border-muted-foreground/40 transition-all cursor-pointer group space-y-2"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-7 h-7 rounded-lg bg-secondary border border-border text-secondary-foreground font-mono text-[11px] font-bold flex items-center justify-center shrink-0">
-                        {site.code}
-                      </span>
-                      <div className="truncate">
-                        <h4 className="text-xs font-bold text-foreground group-hover:text-primary transition-colors truncate">
-                          {site.name}
-                        </h4>
-                        <span className="text-[10px] text-muted-foreground">
-                          {site.docCount} docs • {site.pendingCount > 0 ? `${site.pendingCount} pending` : 'All verified'}
+              <button
+                onClick={() => onNavigateDocuments()}
+                className="text-xs font-bold text-foreground hover:underline cursor-pointer"
+              >
+                View in Explorer →
+              </button>
+            </div>
+
+            <div className="space-y-3 pt-1">
+              {siteAnalytics.length === 0 ? (
+                <div className="p-8 text-center text-xs text-muted-foreground">
+                  No construction sites registered yet.
+                </div>
+              ) : (
+                siteAnalytics.map((site) => (
+                  <div
+                    key={site.id}
+                    onClick={() => onNavigateDocuments(site.id)}
+                    className="p-3.5 rounded-2xl bg-muted/30 hover:bg-muted/60 border border-border hover:border-muted-foreground/40 transition-all cursor-pointer group space-y-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-7 h-7 rounded-lg bg-secondary border border-border text-secondary-foreground font-mono text-[11px] font-bold flex items-center justify-center shrink-0">
+                          {site.code}
+                        </span>
+                        <div className="truncate">
+                          <h4 className="text-xs font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                            {site.name}
+                          </h4>
+                          <span className="text-[10px] text-muted-foreground">
+                            {site.docCount} docs • {site.pendingCount > 0 ? `${site.pendingCount} pending` : 'All verified'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <div className="text-xs sm:text-sm font-black font-mono text-foreground">
+                          {formatCurrency(site.totalSpend)}
+                        </div>
+                        <span className="text-[10px] font-mono text-muted-foreground font-bold">
+                          {site.percentageOfTotal.toFixed(1)}% of spend
                         </span>
                       </div>
                     </div>
 
-                    <div className="text-right shrink-0">
-                      <div className="text-xs sm:text-sm font-black font-mono text-foreground">
-                        {formatCurrency(site.totalSpend)}
-                      </div>
-                      <span className="text-[10px] font-mono text-muted-foreground font-bold">
-                        {site.percentageOfTotal.toFixed(1)}% of spend
-                      </span>
+                    {/* Progress Bar */}
+                    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-500"
+                        style={{ width: `${Math.max(site.percentageOfTotal, 2)}%` }}
+                      />
                     </div>
                   </div>
-
-                  {/* Progress Bar */}
-                  <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary rounded-full transition-all duration-500"
-                      style={{ width: `${Math.max(site.percentageOfTotal, 2)}%` }}
-                    />
-                  </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
-        </div>
+        </ErrorBoundary>
 
         {/* Right Col: Document Type Distribution */}
-        <div className="bg-card border border-border rounded-3xl p-6 shadow-xl space-y-4">
-          <div>
-            <h3 className="text-sm sm:text-base font-bold text-foreground tracking-tight flex items-center gap-2">
-              <Icons.File className="w-4 h-4 text-primary" />
-              <span>Document Types</span>
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Breakdown by invoice, challan, ledger & credit note
-            </p>
-          </div>
+        <ErrorBoundary
+          title="Document Types Unavailable"
+          message="Could not load document category list."
+          compact
+          className="min-h-[260px]"
+        >
+          <div className="bg-card border border-border rounded-3xl p-6 shadow-xl space-y-4 h-full">
+            <div>
+              <h3 className="text-sm sm:text-base font-bold text-foreground tracking-tight flex items-center gap-2">
+                <Icons.File className="w-4 h-4 text-primary" />
+                <span>Document Types</span>
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Breakdown by invoice, challan, ledger & credit note
+              </p>
+            </div>
 
-          <div className="space-y-2.5 pt-1">
-            {typeDistribution.map((item) => (
-              <div
-                key={item.type}
-                onClick={() => onNavigateDocuments(undefined, item.type)}
-                className={`p-3 rounded-2xl border border-border bg-muted/30 hover:bg-muted/60 transition-all cursor-pointer group flex items-center justify-between gap-3`}
-              >
-                <div>
-                  <h4 className="text-xs font-bold text-foreground group-hover:underline">
-                    {item.label}
-                  </h4>
-                  <span className="text-[10px] text-muted-foreground font-mono">
-                    {item.count} document{item.count !== 1 ? 's' : ''}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs font-black font-mono text-foreground">
-                    {formatCurrency(item.totalAmount)}
+            <div className="space-y-2.5 pt-1">
+              {typeDistribution.map((item) => (
+                <div
+                  key={item.type}
+                  onClick={() => onNavigateDocuments(undefined, item.type)}
+                  className={`p-3 rounded-2xl border border-border bg-muted/30 hover:bg-muted/60 transition-all cursor-pointer group flex items-center justify-between gap-3`}
+                >
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground group-hover:underline">
+                      {item.label}
+                    </h4>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      {item.count} document{item.count !== 1 ? 's' : ''}
+                    </span>
                   </div>
-                  <span className="text-[10px] text-muted-foreground">
-                    {item.percentage.toFixed(1)}% share
-                  </span>
+                  <div className="text-right">
+                    <div className="text-xs font-black font-mono text-foreground">
+                      {formatCurrency(item.totalAmount)}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">
+                      {item.percentage.toFixed(1)}% share
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        </ErrorBoundary>
       </div>
 
       {/* 4. Bottom Section: Top Vendors & Pending Verification Queue */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Vendors by Spend */}
-        <div className="bg-card border border-border rounded-3xl p-6 shadow-xl space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm sm:text-base font-bold text-foreground tracking-tight flex items-center gap-2">
-              <Icons.Users className="w-4 h-4 text-primary" />
-              <span>Top Suppliers & Vendors</span>
-            </h3>
-            <span className="text-[10px] font-mono font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border">
-              Ranked by Spend
-            </span>
-          </div>
+        <ErrorBoundary
+          title="Supplier Ranking Unavailable"
+          message="Could not rank vendor expenditures."
+          compact
+          className="min-h-[240px]"
+        >
+          <div className="bg-card border border-border rounded-3xl p-6 shadow-xl space-y-4 h-full">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm sm:text-base font-bold text-foreground tracking-tight flex items-center gap-2">
+                <Icons.Users className="w-4 h-4 text-primary" />
+                <span>Top Suppliers & Vendors</span>
+              </h3>
+              <span className="text-[10px] font-mono font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border">
+                Ranked by Spend
+              </span>
+            </div>
 
-          <div className="space-y-2.5">
-            {topVendors.length === 0 ? (
-              <div className="p-8 text-center bg-muted/20 rounded-2xl border border-border text-xs text-muted-foreground">
-                No vendor transactions recorded yet.
-              </div>
-            ) : (
-              topVendors.map((vendor, idx) => (
-                <div
-                  key={vendor.name}
-                  onClick={() => onNavigateDocuments()}
-                  className="p-3 rounded-2xl bg-muted/30 hover:bg-muted/60 border border-border transition-all flex items-center justify-between gap-3 cursor-pointer group"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="w-6 h-6 rounded-lg bg-secondary text-foreground font-mono text-[11px] font-bold flex items-center justify-center shrink-0 border border-border">
-                      {idx + 1}
-                    </span>
-                    <div className="truncate">
-                      <h4 className="text-xs font-bold text-foreground transition-colors truncate">
-                        {vendor.name}
-                      </h4>
-                      <span className="text-[10px] text-muted-foreground">
-                        {vendor.count} document{vendor.count !== 1 ? 's' : ''}
+            <div className="space-y-2.5">
+              {topVendors.length === 0 ? (
+                <div className="p-8 text-center bg-muted/20 rounded-2xl border border-border text-xs text-muted-foreground">
+                  No vendor transactions recorded yet.
+                </div>
+              ) : (
+                topVendors.map((vendor, idx) => (
+                  <div
+                    key={vendor.name}
+                    onClick={() => onNavigateDocuments()}
+                    className="p-3 rounded-2xl bg-muted/30 hover:bg-muted/60 border border-border transition-all flex items-center justify-between gap-3 cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-6 h-6 rounded-lg bg-secondary text-foreground font-mono text-[11px] font-bold flex items-center justify-center shrink-0 border border-border">
+                        {idx + 1}
+                      </span>
+                      <div className="truncate">
+                        <h4 className="text-xs font-bold text-foreground transition-colors truncate">
+                          {vendor.name}
+                        </h4>
+                        <span className="text-[10px] text-muted-foreground">
+                          {vendor.count} document{vendor.count !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="text-xs font-black font-mono text-emerald-400">
+                        {formatCurrency(vendor.totalSpend)}
+                      </div>
+                      <span className="text-[10px] font-mono text-muted-foreground">
+                        {vendor.percentageOfTotal.toFixed(1)}% of spend
                       </span>
                     </div>
                   </div>
-
-                  <div className="text-right shrink-0">
-                    <div className="text-xs font-black font-mono text-emerald-400">
-                      {formatCurrency(vendor.totalSpend)}
-                    </div>
-                    <span className="text-[10px] font-mono text-muted-foreground">
-                      {vendor.percentageOfTotal.toFixed(1)}% of spend
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
-        </div>
+        </ErrorBoundary>
 
         {/* Pending Verification Action Queue */}
-        <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              <h3 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
-                Pending Verification Queue
-              </h3>
-            </div>
-            <span className="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg">
-              {pendingCount} Pending
-            </span>
-          </div>
-
-          <div className="space-y-2.5">
-            {pendingDocs.length === 0 ? (
-              <div className="p-8 text-center bg-muted/20 rounded-2xl border border-border">
-                <Icons.Check className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-                <h4 className="text-xs font-bold text-foreground">All Documents Verified!</h4>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  There are no pending documents waiting for checker verification.
-                </p>
+        <ErrorBoundary
+          title="Verification Queue Unavailable"
+          message="Could not load pending verification documents."
+          compact
+          className="min-h-[240px]"
+        >
+          <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4 h-full">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                <h3 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
+                  Pending Verification Queue
+                </h3>
               </div>
-            ) : (
-              pendingDocs.slice(0, 4).map((doc) => {
-                const site = siteMap.get(doc.siteId);
-                return (
-                  <div
-                    key={doc.id}
-                    onClick={() => onSelectDocument(doc)}
-                    className="p-3 rounded-2xl bg-muted/30 hover:bg-muted/60 border border-border hover:border-amber-500/30 transition-all flex items-center justify-between gap-3 cursor-pointer group"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-foreground group-hover:text-amber-400 transition-colors truncate">
-                          {doc.vendorName}
-                        </span>
-                        <span className="text-[10px] font-mono text-muted-foreground bg-background px-1.5 py-0.5 rounded border border-border">
-                          {doc.invoiceNumber}
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground mt-0.5 block">
-                        {site?.name || 'Site'} • {formatDate(doc.date)}
-                      </span>
-                    </div>
+              <span className="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg">
+                {pendingCount} Pending
+              </span>
+            </div>
 
-                    <div className="text-right shrink-0 flex items-center gap-2.5">
-                      <div>
-                        <div className="text-xs font-black font-mono text-amber-400">
-                          {formatCurrency(doc.amount)}
+            <div className="space-y-2.5">
+              {pendingDocs.length === 0 ? (
+                <div className="p-8 text-center bg-muted/20 rounded-2xl border border-border">
+                  <Icons.Check className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
+                  <h4 className="text-xs font-bold text-foreground">All Documents Verified!</h4>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    There are no pending documents waiting for checker verification.
+                  </p>
+                </div>
+              ) : (
+                pendingDocs.slice(0, 4).map((doc) => {
+                  const site = siteMap.get(doc.siteId);
+                  return (
+                    <div
+                      key={doc.id}
+                      onClick={() => onSelectDocument(doc)}
+                      className="p-3 rounded-2xl bg-muted/30 hover:bg-muted/60 border border-border hover:border-amber-500/30 transition-all flex items-center justify-between gap-3 cursor-pointer group"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-foreground group-hover:text-amber-400 transition-colors truncate">
+                            {doc.vendorName}
+                          </span>
+                          <span className="text-[10px] font-mono text-muted-foreground bg-background px-1.5 py-0.5 rounded border border-border">
+                            {doc.invoiceNumber}
+                          </span>
                         </div>
-                        <span className="text-[9px] font-bold uppercase text-amber-400">
-                          Needs Check
+                        <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                          {site?.name || 'Site'} • {formatDate(doc.date)}
                         </span>
                       </div>
-                      <span className="text-xs text-muted-foreground group-hover:text-foreground p-1 rounded-lg bg-secondary group-hover:bg-amber-500/20 transition-colors">
-                        →
-                      </span>
+
+                      <div className="text-right shrink-0 flex items-center gap-2.5">
+                        <div>
+                          <div className="text-xs font-black font-mono text-amber-400">
+                            {formatCurrency(doc.amount)}
+                          </div>
+                          <span className="text-[9px] font-bold uppercase text-amber-400">
+                            Needs Check
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground group-hover:text-foreground p-1 rounded-lg bg-secondary group-hover:bg-amber-500/20 transition-colors">
+                          →
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })
-            )}
+                  );
+                })
+              )}
+            </div>
           </div>
-        </div>
+        </ErrorBoundary>
       </div>
     </div>
   );
