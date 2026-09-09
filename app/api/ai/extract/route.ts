@@ -120,64 +120,6 @@ function normalizeDateString(rawDate: string): string {
   return new Date().toISOString().split('T')[0];
 }
 
-/**
- * Fallback heuristic extractor if AI model call fails
- */
-function heuristicFallbackExtraction(fileName: string) {
-  const cleanName = fileName.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-  const year = new Date().getFullYear();
-  const randomNum = Math.floor(1000 + Math.random() * 9000);
-  const randomAmount = parseFloat((Math.random() * 65000 + 3500).toFixed(2));
-
-  let detectedType: 'Invoice' | 'Challan' | 'Credit Note' | 'Ledger' = 'Invoice';
-  if (/credit|cn|cr\s*note|cr_note|creditnote/i.test(fileName)) {
-    detectedType = 'Credit Note';
-  } else if (/ledger|statement|account|soa|acct/i.test(fileName)) {
-    detectedType = 'Ledger';
-  } else if (/challan|delivery|dc|dispatch|memo/i.test(fileName)) {
-    detectedType = 'Challan';
-  }
-
-  let vendor = 'METRO INFRASTRUCTURE SUPPLIERS';
-  if (cleanName.length > 3) {
-    vendor = cleanName
-      .split(' ')
-      .filter((w) => !/invoice|bill|doc|scan|pdf|img|receipt|challan|memo|credit|ledger|statement/i.test(w))
-      .join(' ')
-      .trim();
-    if (!vendor) vendor = cleanName;
-  }
-
-  const invoiceNumber =
-    detectedType === 'Ledger'
-      ? `01-Apr-${year - 1} to 31-Mar-${year}`
-      : detectedType === 'Credit Note'
-      ? `CN-${year}-${randomNum}`
-      : detectedType === 'Challan'
-      ? `DC-${year}-${randomNum}`
-      : `INV-${year}-${randomNum}`;
-
-  const single = {
-    vendorName: vendor.toUpperCase(),
-    invoiceNumber,
-    date: new Date().toISOString().split('T')[0],
-    documentType: detectedType,
-    totalAmount: randomAmount,
-    subtotal: parseFloat((randomAmount * 0.85).toFixed(2)),
-    taxAmount: parseFloat((randomAmount * 0.15).toFixed(2)),
-    taxId: '27AABCU9603R1ZM',
-    pageNumber: 1,
-    notes: detectedType === 'Ledger' ? 'Account Ledger Statement' : 'General Construction Materials',
-    confidenceScore: 0.75,
-  };
-
-  return {
-    invoices: [single],
-    ...single,
-    source: 'heuristic-fallback',
-  };
-}
-
 export async function POST(req: NextRequest) {
   try {
     // 1. Rate limiting check (max 100 requests per minute per IP to accommodate batch uploads)
@@ -186,7 +128,9 @@ export async function POST(req: NextRequest) {
     if (rateLimitResult.isLimited) {
       return NextResponse.json(
         {
+          success: false,
           error: 'Rate limit exceeded. Please wait before processing more documents.',
+          isRateLimited: true,
           retryAfterMs: rateLimitResult.resetMs,
         },
         {
@@ -202,13 +146,13 @@ export async function POST(req: NextRequest) {
     const file = formData.get('file') as File | null;
 
     if (!file) {
-      return NextResponse.json({ error: 'No document file was provided.' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'No document file was provided.' }, { status: 400 });
     }
 
     // 2. Strict file size validation
     if (file.size > MAX_FILE_SIZE_BYTES) {
       return NextResponse.json(
-        { error: `File size (${(file.size / (1024 * 1024)).toFixed(1)} MB) exceeds maximum limit of 25 MB.` },
+        { success: false, error: `File size (${(file.size / (1024 * 1024)).toFixed(1)} MB) exceeds maximum limit of 25 MB.` },
         { status: 413 }
       );
     }
@@ -217,7 +161,7 @@ export async function POST(req: NextRequest) {
     const mimeType = file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
     if (file.type && !ALLOWED_MIME_TYPES.has(file.type.toLowerCase()) && !file.type.startsWith('image/')) {
       return NextResponse.json(
-        { error: `Unsupported file format (${file.type}). Supported types: PDF, PNG, JPG, WEBP.` },
+        { success: false, error: `Unsupported file format (${file.type}). Supported types: PDF, PNG, JPG, WEBP.` },
         { status: 415 }
       );
     }
@@ -228,13 +172,13 @@ export async function POST(req: NextRequest) {
       process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
     if (!apiKey) {
-      const fallbackData = heuristicFallbackExtraction(file.name);
-      return NextResponse.json({
-        success: true,
-        source: 'heuristic-fallback',
-        message: 'No GEMINI_API_KEY configured; using heuristic fallback.',
-        data: fallbackData,
-      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'GEMINI_API_KEY is not configured on the server. Please add your Gemini API key.',
+        },
+        { status: 500 }
+      );
     }
 
     // Convert file to base64 buffer for Gemini Vision
@@ -339,20 +283,32 @@ SPECIAL FIELD EXTRACTION RULES:
       } catch (err: unknown) {
         lastError = err as Error;
         const errMsg = (err as { message?: string })?.message || String(err);
-        console.warn(`[Gemini API] Fast failover from ${modelName}:`, errMsg);
-        // Instantly try next model without sleeping
+        const isRateLimit = /429|RESOURCE_EXHAUSTED|quota|rate limit/i.test(errMsg);
+        console.warn(`[Gemini API] Failover from ${modelName} (${isRateLimit ? '429 Rate Limit' : 'Error'}):`, errMsg);
+        if (isRateLimit) {
+          // If rate limit hit, short backoff before attempting next candidate
+          await sleep(1500);
+        }
       }
     }
 
     if (!rawParsedData || !rawParsedData.invoices) {
       console.error('All Gemini model candidates failed. Last error:', lastError);
-      const fallback = heuristicFallbackExtraction(file.name);
-      return NextResponse.json({
-        success: true,
-        source: 'heuristic-fallback',
-        error: lastError?.message,
-        data: fallback,
-      });
+      const errMsg = lastError?.message || '';
+      const isRateLimited = /429|RESOURCE_EXHAUSTED|quota|rate limit/i.test(errMsg);
+
+      const userFacingError = isRateLimited
+        ? 'Gemini API quota or rate limit reached (429). Please wait a few seconds and retry.'
+        : lastError?.message || 'AI document processing failed to extract records from this file.';
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: userFacingError,
+          isRateLimited,
+        },
+        { status: isRateLimited ? 429 : 500 }
+      );
     }
 
     const rawInvoices = (rawParsedData.invoices as Array<Record<string, unknown>>) || [];

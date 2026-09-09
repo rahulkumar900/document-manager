@@ -29,6 +29,8 @@ export interface InvoiceDraftItem {
   pageNumber?: number;
   notes?: string;
   taxId?: string;
+  hasExtractionFailed?: boolean;
+  extractionError?: string;
 }
 
 interface DocumentUploadViewProps {
@@ -596,7 +598,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
     }> = [];
 
     let successfulAiExtractions = 0;
-    let fallbackExtractions = 0;
+    let failedExtractionsCount = 0;
     let lastErrorEncountered: string | null = null;
     let isHighDemandSpike = false;
 
@@ -614,34 +616,27 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
         )
       );
 
-      try {
-        const fileToScan = await optimizeImageForAi(item.file);
-        const body = new FormData();
-        body.append('file', fileToScan);
+      let extractionSucceeded = false;
+      let parsedInvoices: InvoiceDraftItem[] = [];
+      let failureError = '';
+      let isRateLimitError = false;
 
-        const res = await fetch('/api/ai/extract', {
-          method: 'POST',
-          body,
-        });
+      // Try up to 2 attempts if rate-limited (429)
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const fileToScan = await optimizeImageForAi(item.file);
+          const body = new FormData();
+          body.append('file', fileToScan);
 
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && json.data) {
+          const res = await fetch('/api/ai/extract', {
+            method: 'POST',
+            body,
+          });
+
+          const json = await res.json().catch(() => ({}));
+
+          if (res.ok && json.success && json.data) {
             const d = json.data;
-            const isFallback = json.source === 'heuristic-fallback' || !!json.error;
-
-            if (isFallback) {
-              fallbackExtractions++;
-              if (json.error) {
-                lastErrorEncountered = json.error;
-                if (/503|UNAVAILABLE|high demand|429/i.test(json.error)) {
-                  isHighDemandSpike = true;
-                }
-              }
-            } else {
-              successfulAiExtractions++;
-            }
-
             const extractedList =
               d.invoices && Array.isArray(d.invoices) && d.invoices.length > 0
                 ? d.invoices
@@ -656,7 +651,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                     },
                   ];
 
-            const parsedInvoices: InvoiceDraftItem[] = extractedList.map((inv: any, idx: number) => {
+            parsedInvoices = extractedList.map((inv: any, idx: number) => {
               let docType: DocumentType = 'Invoice';
               if (inv.documentType === 'Challan' || inv.documentType === 'Credit Note' || inv.documentType === 'Ledger') {
                 docType = inv.documentType;
@@ -678,86 +673,53 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                 pageNumber: inv.pageNumber || idx + 1,
                 notes: inv.notes || '',
                 taxId: inv.taxId || '',
+                hasExtractionFailed: false,
               };
             });
 
-            const resultItem = {
-              fileId: item.id,
-              fileIndex,
-              status: 'ready' as const,
-              statusMessage: isFallback
-                ? 'Extracted with smart defaults'
-                : `${parsedInvoices.length} document record(s) extracted`,
-              invoices: parsedInvoices,
-            };
-
-            scanResults.push(resultItem);
-
-            // Progressive updates: update this file's status in uploadedFiles immediately
-            setUploadedFiles((prev) =>
-              prev.map((f) =>
-                f.id === item.id
-                  ? { ...f, status: 'ready', statusMessage: resultItem.statusMessage }
-                  : f
-              )
-            );
-
-            // Progressive updates: add invoices immediately and maintain strict attachment order
-            setInvoices((prev) => {
-              const combined = [...prev, ...parsedInvoices];
-              const allFileIds = [...uploadedFiles.map((f) => f.id), ...newFileItems.map((f) => f.id)];
-              const fileOrderMap = new Map(allFileIds.map((id, idx) => [id, idx]));
-
-              return combined.sort((a, b) => {
-                const orderA = fileOrderMap.has(a.fileId) ? fileOrderMap.get(a.fileId)! : 9999;
-                const orderB = fileOrderMap.has(b.fileId) ? fileOrderMap.get(b.fileId)! : 9999;
-                if (orderA !== orderB) return orderA - orderB;
-                return (a.pageNumber || 1) - (b.pageNumber || 1);
-              });
-            });
-
-            return;
+            extractionSucceeded = true;
+            successfulAiExtractions++;
+            break;
           }
+
+          // If failed, extract error message
+          const errText = json.error || (res.status === 429 ? 'Rate limit reached (429)' : `Extraction failed (HTTP ${res.status})`);
+          failureError = errText;
+
+          if (res.status === 429 || json.isRateLimited || /429|rate|quota/i.test(errText)) {
+            isRateLimitError = true;
+            isHighDemandSpike = true;
+            if (attempt === 1) {
+              setUploadedFiles((prev) =>
+                prev.map((f) =>
+                  f.id === item.id
+                    ? { ...f, status: 'scanning', statusMessage: 'Quota cooldown... retrying in 3s' }
+                    : f
+                )
+              );
+              await new Promise((r) => setTimeout(r, 3500));
+              continue;
+            }
+          }
+          break;
+        } catch (err) {
+          const errText = err instanceof Error ? err.message : String(err);
+          failureError = errText;
+          if (/429|rate|quota/i.test(errText)) {
+            isRateLimitError = true;
+            isHighDemandSpike = true;
+          }
+          break;
         }
+      }
 
-        // Fallback parsing if status not OK or missing payload
-        fallbackExtractions++;
-        const cleanName = item.file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-        const year = new Date().getFullYear();
-        const randomNum = Math.floor(1000 + Math.random() * 9000);
-
-        let detectedType: DocumentType = 'Invoice';
-        let invNumber = `INV-${year}-${randomNum}`;
-
-        if (/credit|cn|cr\s*note|cr_note|creditnote/i.test(item.file.name)) {
-          detectedType = 'Credit Note';
-          invNumber = `CN-${year}-${randomNum}`;
-        } else if (/ledger|statement|account|soa|acct/i.test(item.file.name)) {
-          detectedType = 'Ledger';
-          invNumber = `01-Apr-${year - 1} to 31-Mar-${year}`;
-        } else if (/challan|delivery|dc|dispatch|memo/i.test(item.file.name)) {
-          detectedType = 'Challan';
-          invNumber = `DC-${year}-${randomNum}`;
-        }
-
-        const fallbackInvoice: InvoiceDraftItem = {
-          id: generateUUID(),
-          fileId: item.id,
-          vendorName: cleanName.length > 3 ? cleanName.toUpperCase() : 'METRO CONTRACTORS CORP',
-          invoiceNumber: invNumber,
-          date: new Date().toISOString().split('T')[0],
-          type: detectedType,
-          amount: (Math.random() * 65000 + 2500).toFixed(2),
-          pageNumber: 1,
-          notes: detectedType === 'Ledger' ? 'Account Statement' : undefined,
-        };
-
+      if (extractionSucceeded) {
         const resultItem = {
           fileId: item.id,
           fileIndex,
           status: 'ready' as const,
-          statusMessage: 'Extracted with smart defaults',
-          invoices: [fallbackInvoice],
+          statusMessage: `${parsedInvoices.length} document record(s) extracted`,
+          invoices: parsedInvoices,
         };
 
         scanResults.push(resultItem);
@@ -771,7 +733,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
         );
 
         setInvoices((prev) => {
-          const combined = [...prev, fallbackInvoice];
+          const combined = [...prev, ...parsedInvoices];
           const allFileIds = [...uploadedFiles.map((f) => f.id), ...newFileItems.map((f) => f.id)];
           const fileOrderMap = new Map(allFileIds.map((id, idx) => [id, idx]));
 
@@ -782,37 +744,53 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
             return (a.pageNumber || 1) - (b.pageNumber || 1);
           });
         });
-      } catch (err) {
-        console.error(`AI Extraction failed for ${item.file.name}:`, err);
-        const errMsg = err instanceof Error ? err.message : String(err);
-        lastErrorEncountered = errMsg;
-        if (/503|UNAVAILABLE|high demand|429/i.test(errMsg)) {
-          isHighDemandSpike = true;
+      } else {
+        // Transparent failure: DO NOT generate fake random data!
+        failedExtractionsCount++;
+        lastErrorEncountered = failureError || (isRateLimitError ? 'Rate limit exceeded' : 'Extraction failed');
+
+        let detectedType: DocumentType = 'Invoice';
+        if (/credit|cn|cr\s*note|cr_note|creditnote/i.test(item.file.name)) {
+          detectedType = 'Credit Note';
+        } else if (/ledger|statement|account|soa|acct/i.test(item.file.name)) {
+          detectedType = 'Ledger';
+        } else if (/challan|delivery|dc|dispatch|memo/i.test(item.file.name)) {
+          detectedType = 'Challan';
         }
 
-        const cleanName = item.file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-        const year = new Date().getFullYear();
-        const fallbackInvoice: InvoiceDraftItem = {
+        const failedInvoice: InvoiceDraftItem = {
           id: generateUUID(),
           fileId: item.id,
-          vendorName: cleanName.length > 3 ? cleanName.toUpperCase() : 'METRO CONTRACTORS CORP',
-          invoiceNumber: `INV-${year}-${Math.floor(1000 + Math.random() * 9000)}`,
+          vendorName: '', // Left blank so user is aware and not deceived
+          invoiceNumber: '',
           date: new Date().toISOString().split('T')[0],
-          type: 'Invoice',
-          amount: '5000.00',
+          type: detectedType,
+          amount: '', // Left blank
           pageNumber: 1,
+          hasExtractionFailed: true,
+          extractionError: failureError || (isRateLimitError ? 'Rate limit exceeded (429)' : 'AI extraction failed'),
         };
+
+        const resultItem = {
+          fileId: item.id,
+          fileIndex,
+          status: 'error' as const,
+          statusMessage: isRateLimitError ? 'Rate limit hit (click Retry)' : 'Extraction failed (click Retry)',
+          invoices: [failedInvoice],
+        };
+
+        scanResults.push(resultItem);
 
         setUploadedFiles((prev) =>
           prev.map((f) =>
             f.id === item.id
-              ? { ...f, status: 'ready', statusMessage: 'Extracted with smart defaults' }
+              ? { ...f, status: 'error', statusMessage: resultItem.statusMessage }
               : f
           )
         );
 
         setInvoices((prev) => {
-          const combined = [...prev, fallbackInvoice];
+          const combined = [...prev, failedInvoice];
           const allFileIds = [...uploadedFiles.map((f) => f.id), ...newFileItems.map((f) => f.id)];
           const fileOrderMap = new Map(allFileIds.map((id, idx) => [id, idx]));
 
@@ -823,20 +801,28 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
             return (a.pageNumber || 1) - (b.pageNumber || 1);
           });
         });
-      } finally {
-        completedCount++;
-        setAiScanningStep(`Extracted ${completedCount} of ${totalToScan} documents...`);
       }
+
+      completedCount++;
+      setAiScanningStep(`Extracted ${completedCount} of ${totalToScan} documents...`);
     };
 
-    // Parallel concurrency pool: processes up to 3 documents simultaneously
+    // Parallel concurrency pool: processes up to 3 documents simultaneously with slight pacing
     const CONCURRENCY_LIMIT = 3;
     const queue = newFileItems.map((item, idx) => ({ item, idx }));
-    const workers = Array.from({ length: Math.min(CONCURRENCY_LIMIT, queue.length) }, async () => {
+    const workers = Array.from({ length: Math.min(CONCURRENCY_LIMIT, queue.length) }, async (_, workerIdx) => {
+      // Stagger worker start slightly to prevent instantaneous burst
+      if (workerIdx > 0) {
+        await new Promise((r) => setTimeout(r, workerIdx * 300));
+      }
       while (queue.length > 0) {
         const next = queue.shift();
         if (next) {
           await processSingleFile(next.item, next.idx);
+          // Brief pacing between consecutive files in the same worker
+          if (queue.length > 0) {
+            await new Promise((r) => setTimeout(r, 200));
+          }
         }
       }
     });
@@ -844,12 +830,10 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
     setAiScanningStep(`Extracting ${totalToScan} document(s) in parallel...`);
     await Promise.all(workers);
 
-    // Only display the error banner if NO documents were extracted with AI AND there was an API failure
-    if (successfulAiExtractions === 0 && lastErrorEncountered) {
+    // Explicitly acknowledge failures if ANY document failed!
+    if (failedExtractionsCount > 0) {
       setAiExtractionError({
-        message:
-          lastErrorEncountered ||
-          'AI OCR engine is currently experiencing temporary high demand. Basic document defaults were generated; you can click below to retry the AI extraction.',
+        message: `${failedExtractionsCount} of ${totalToScan} document(s) could not be extracted automatically (${isHighDemandSpike ? 'API rate limit or quota exceeded' : lastErrorEncountered || 'AI extraction failed'}). Their fields are left blank for manual review, or you can click "Retry Failed Extractions" below.`,
         isHighDemand: isHighDemandSpike,
       });
     } else {
@@ -874,6 +858,166 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
     const files = e.target.files;
     if (files && files.length > 0) {
       processSelectedFiles(files);
+    }
+  };
+
+  // Re-run AI extraction for a single failed file
+  const handleRetrySingleFile = async (fileId: string) => {
+    const fileItem = uploadedFiles.find((f) => f.id === fileId);
+    if (!fileItem || isAiScanning) return;
+
+    setIsAiScanning(true);
+    setAiScanningStep(`Retrying extraction for ${fileItem.file.name}...`);
+
+    setUploadedFiles((prev) =>
+      prev.map((f) =>
+        f.id === fileId
+          ? { ...f, status: 'scanning', statusMessage: 'Retrying AI extraction...' }
+          : f
+      )
+    );
+
+    let extractionSucceeded = false;
+    let parsedInvoices: InvoiceDraftItem[] = [];
+    let failureError = '';
+    let isRateLimitError = false;
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const fileToScan = await optimizeImageForAi(fileItem.file);
+        const body = new FormData();
+        body.append('file', fileToScan);
+
+        const res = await fetch('/api/ai/extract', {
+          method: 'POST',
+          body,
+        });
+
+        const json = await res.json().catch(() => ({}));
+
+        if (res.ok && json.success && json.data) {
+          const d = json.data;
+          const extractedList =
+            d.invoices && Array.isArray(d.invoices) && d.invoices.length > 0
+              ? d.invoices
+              : [
+                  {
+                    vendorName: d.vendorName,
+                    invoiceNumber: d.invoiceNumber,
+                    date: d.date,
+                    documentType: d.documentType,
+                    totalAmount: d.totalAmount,
+                    pageNumber: 1,
+                  },
+                ];
+
+          parsedInvoices = extractedList.map((inv: any, idx: number) => {
+            let docType: DocumentType = 'Invoice';
+            if (inv.documentType === 'Challan' || inv.documentType === 'Credit Note' || inv.documentType === 'Ledger') {
+              docType = inv.documentType;
+            } else if (inv.documentType === 'Tax Invoice') {
+              docType = 'Invoice';
+            }
+
+            return {
+              id: generateUUID(),
+              fileId: fileItem.id,
+              vendorName: inv.vendorName || '',
+              invoiceNumber: inv.invoiceNumber || '',
+              date: inv.date || new Date().toISOString().split('T')[0],
+              type: docType,
+              amount:
+                inv.totalAmount !== undefined && inv.totalAmount !== null
+                  ? String(inv.totalAmount)
+                  : '',
+              pageNumber: inv.pageNumber || idx + 1,
+              notes: inv.notes || '',
+              taxId: inv.taxId || '',
+              hasExtractionFailed: false,
+            };
+          });
+
+          extractionSucceeded = true;
+          break;
+        }
+
+        const errText = json.error || (res.status === 429 ? 'Rate limit reached (429)' : `Extraction failed (HTTP ${res.status})`);
+        failureError = errText;
+
+        if (res.status === 429 || json.isRateLimited || /429|rate|quota/i.test(errText)) {
+          isRateLimitError = true;
+          if (attempt === 1) {
+            setUploadedFiles((prev) =>
+              prev.map((f) =>
+                f.id === fileId
+                  ? { ...f, statusMessage: 'Quota cooldown... retrying in 3.5s' }
+                  : f
+              )
+            );
+            await new Promise((r) => setTimeout(r, 3500));
+            continue;
+          }
+        }
+        break;
+      } catch (err) {
+        failureError = err instanceof Error ? err.message : String(err);
+        break;
+      }
+    }
+
+    if (extractionSucceeded) {
+      setUploadedFiles((prev) =>
+        prev.map((f) =>
+          f.id === fileId
+            ? { ...f, status: 'ready', statusMessage: `${parsedInvoices.length} document record(s) extracted` }
+            : f
+        )
+      );
+
+      // Replace this file's previous blank/failed invoice drafts with newly extracted ones
+      setInvoices((prev) => {
+        const withoutOld = prev.filter((i) => i.fileId !== fileId);
+        const combined = [...withoutOld, ...parsedInvoices];
+        const allFileIds = uploadedFiles.map((f) => f.id);
+        const fileOrderMap = new Map(allFileIds.map((id, idx) => [id, idx]));
+
+        return combined.sort((a, b) => {
+          const orderA = fileOrderMap.has(a.fileId) ? fileOrderMap.get(a.fileId)! : 9999;
+          const orderB = fileOrderMap.has(b.fileId) ? fileOrderMap.get(b.fileId)! : 9999;
+          if (orderA !== orderB) return orderA - orderB;
+          return (a.pageNumber || 1) - (b.pageNumber || 1);
+        });
+      });
+    } else {
+      setUploadedFiles((prev) =>
+        prev.map((f) =>
+          f.id === fileId
+            ? { ...f, status: 'error', statusMessage: isRateLimitError ? 'Rate limit hit (click Retry)' : 'Extraction failed (click Retry)' }
+            : f
+        )
+      );
+      setInvoices((prev) =>
+        prev.map((inv) =>
+          inv.fileId === fileId
+            ? { ...inv, hasExtractionFailed: true, extractionError: failureError || 'AI extraction failed' }
+            : inv
+        )
+      );
+    }
+
+    setIsAiScanning(false);
+  };
+
+  // Re-run AI extraction for all documents that failed
+  const handleRetryFailedFiles = async () => {
+    const failedFiles = uploadedFiles.filter((f) => f.status === 'error');
+    if (failedFiles.length === 0 || isAiScanning) return;
+
+    setAiExtractionError(null);
+    for (const f of failedFiles) {
+      await handleRetrySingleFile(f.id);
+      // Pacing pause between retries
+      await new Promise((r) => setTimeout(r, 600));
     }
   };
 
@@ -1370,14 +1514,22 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                         <div className="max-w-[130px] truncate text-xs font-semibold">
                           {item.file.name}
                         </div>
-                        {fileInvoicesCount > 0 && (
+                        {item.status === 'error' ? (
+                          <span
+                            className="text-[10px] font-mono text-rose-300 bg-rose-950/80 border border-rose-800/60 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5"
+                            title="Extraction failed. Click to view or retry."
+                          >
+                            <Icons.AlertTriangle className="w-2.5 h-2.5 text-rose-400" />
+                            <span>Error</span>
+                          </span>
+                        ) : fileInvoicesCount > 0 ? (
                           <span
                             className="text-[10px] font-mono text-primary bg-primary/20 px-1.5 py-0.5 rounded font-bold"
                             title={`${fileInvoicesCount} record(s) extracted`}
                           >
                             {fileInvoicesCount}
                           </span>
-                        )}
+                        ) : null}
                         <span
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1679,12 +1831,22 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                 <div className="flex items-center gap-2 pt-2 border-t border-amber-900/40">
                   <button
                     type="button"
-                    onClick={handleReScanAllFiles}
+                    onClick={handleRetryFailedFiles}
                     disabled={isAiScanning}
                     className="bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs px-3.5 py-1.5 rounded-lg transition-all active:scale-95 flex items-center gap-1.5 shadow-md cursor-pointer disabled:opacity-50"
                   >
                     <Icons.Sparkles className="w-3.5 h-3.5" />
-                    <span>Retry AI Extraction Now</span>
+                    <span>
+                      Retry Failed Documents ({uploadedFiles.filter((f) => f.status === 'error').length || 1})
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleReScanAllFiles}
+                    disabled={isAiScanning}
+                    className="text-amber-300 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-amber-700/50 hover:bg-amber-900/40 transition-colors cursor-pointer"
+                  >
+                    Re-scan All Files
                   </button>
                   <button
                     type="button"
@@ -1878,6 +2040,17 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                                 </span>
                               )}
 
+                              {/* AI Extraction Failure Badge */}
+                              {inv.hasExtractionFailed && (
+                                <span
+                                  className="text-[10px] font-bold uppercase tracking-wider bg-rose-950/80 text-rose-300 border border-rose-800/60 px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0"
+                                  title={inv.extractionError || 'AI extraction failed. Enter fields manually or retry.'}
+                                >
+                                  <Icons.AlertTriangle className="w-3 h-3 text-rose-400 stroke-[2.5]" />
+                                  <span>Extraction Failed</span>
+                                </span>
+                              )}
+
                               <span className="text-xs font-bold text-white truncate">
                                 {inv.type === 'Ledger'
                                   ? inv.invoiceNumber
@@ -1947,7 +2120,21 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                                 >
                                   <Icons.Eye className="w-3 h-3 text-primary" />
                                   <span className="hidden sm:inline">View Att. #{fileIdx + 1}</span>
-                                  <span className="sm:hidden">View Doc</span>
+                                </button>
+                              )}
+                              {inv.hasExtractionFailed && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRetrySingleFile(inv.fileId);
+                                  }}
+                                  disabled={isAiScanning}
+                                  className="text-[10px] font-bold bg-amber-500 hover:bg-amber-400 text-black px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm cursor-pointer active:scale-95 transition-all disabled:opacity-50"
+                                  title="Retry AI extraction for this document"
+                                >
+                                  <Icons.Sparkles className="w-3 h-3" />
+                                  <span>Retry AI</span>
                                 </button>
                               )}
 
