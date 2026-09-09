@@ -108,6 +108,41 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
     setCustomValue(def.value);
   };
 
+  // Sync custom value when customOperator changes
+  const handleCustomOperatorSelect = (newOperator: FilterOperator) => {
+    setCustomOperator(newOperator);
+    if (newOperator === 'between') {
+      if (customKey === 'amount') {
+        setCustomValue(
+          typeof customValue === 'object' && customValue !== null && 'min' in customValue
+            ? customValue
+            : { min: '', max: '' }
+        );
+      } else if (customKey === 'date' || customKey === 'createdAt') {
+        setCustomValue(
+          typeof customValue === 'object' && customValue !== null && 'from' in customValue
+            ? customValue
+            : { from: '', to: '' }
+        );
+      }
+    } else if (newOperator === 'is_one_of') {
+      if (customKey === 'type') {
+        setCustomValue(Array.isArray(customValue) ? customValue : [customValue || 'Invoice']);
+      } else if (customKey === 'siteId') {
+        setCustomValue(Array.isArray(customValue) ? customValue : customValue ? [customValue] : []);
+      }
+    } else {
+      // Scalar operators (equals, not_equals, greater_than, less_than, contains, starts_with)
+      if (Array.isArray(customValue)) {
+        setCustomValue(customValue[0] || (customKey === 'type' ? 'Invoice' : ''));
+      } else if (typeof customValue === 'object' && customValue !== null) {
+        if ('from' in customValue) setCustomValue(customValue.from || '');
+        else if ('min' in customValue) setCustomValue(customValue.min || '');
+        else setCustomValue('');
+      }
+    }
+  };
+
   // Toggle single preset filter
   const togglePresetFilter = (preset: FilterRule) => {
     const existingIndex = filterRules.findIndex(
@@ -134,6 +169,17 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
   const handleAddCustomRule = () => {
     if (customValue === undefined || customValue === null || customValue === '') return;
     if (Array.isArray(customValue) && customValue.length === 0) return;
+    if (customOperator === 'between') {
+      if (customKey === 'amount') {
+        const minVal = customValue?.min;
+        const maxVal = customValue?.max;
+        if ((minVal === undefined || minVal === '') && (maxVal === undefined || maxVal === '')) return;
+      } else if (customKey === 'date' || customKey === 'createdAt') {
+        const fromVal = customValue?.from;
+        const toVal = customValue?.to;
+        if (!fromVal && !toVal) return;
+      }
+    }
 
     const newRule: FilterRule = {
       id: generateUUID(),
@@ -560,6 +606,15 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
                   <div className="space-y-2">
                     <button
                       type="button"
+                      onClick={() => setShowCustomBuilder(true)}
+                      className="w-full text-left px-3 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-bold flex items-center gap-2 cursor-pointer border border-primary/30 shadow-sm"
+                    >
+                      <Icons.Sliders className="w-3.5 h-3.5 text-primary" />
+                      <span>+ Add Custom Rule...</span>
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => {
                         alert(`Current search criteria saved for session (${totalDocumentCount} matching documents).`);
                         setIsDropdownOpen(false);
@@ -656,7 +711,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
                       </label>
                       <select
                         value={customOperator}
-                        onChange={(e) => setCustomOperator(e.target.value as FilterOperator)}
+                        onChange={(e) => handleCustomOperatorSelect(e.target.value as FilterOperator)}
                         className="w-full bg-background border border-input rounded-xl px-3 py-2 text-xs font-semibold text-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                       >
                         {(OPERATOR_OPTIONS[customKey] || []).map((op) => (
@@ -675,22 +730,52 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
 
                       {/* Value: Document Type */}
                       {customKey === 'type' && (
-                        <select
-                          value={Array.isArray(customValue) ? customValue[0] : customValue}
-                          onChange={(e) => setCustomValue([e.target.value])}
-                          className="w-full bg-background border border-input rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                        >
-                          <option value="Invoice">Tax Invoice</option>
-                          <option value="Challan">Delivery Challan</option>
-                          <option value="Credit Note">Credit Note</option>
-                          <option value="Ledger">Ledger & Statement</option>
-                        </select>
+                        customOperator === 'is_one_of' ? (
+                          <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                            {(['Invoice', 'Challan', 'Credit Note', 'Ledger'] as DocumentType[]).map((t) => {
+                              const list = Array.isArray(customValue) ? customValue : [];
+                              const isChecked = list.includes(t);
+                              return (
+                                <button
+                                  type="button"
+                                  key={t}
+                                  onClick={() => {
+                                    if (isChecked) {
+                                      const next = list.filter((item: string) => item !== t);
+                                      setCustomValue(next.length > 0 ? next : [t]);
+                                    } else {
+                                      setCustomValue([...list, t]);
+                                    }
+                                  }}
+                                  className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                                    isChecked
+                                      ? 'bg-primary text-primary-foreground border-primary'
+                                      : 'bg-background text-muted-foreground border-border hover:border-input'
+                                  }`}
+                                >
+                                  {t}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <select
+                            value={Array.isArray(customValue) ? customValue[0] : (customValue || 'Invoice')}
+                            onChange={(e) => setCustomValue(e.target.value)}
+                            className="w-full bg-background border border-input rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                          >
+                            <option value="Invoice">Tax Invoice</option>
+                            <option value="Challan">Delivery Challan</option>
+                            <option value="Credit Note">Credit Note</option>
+                            <option value="Ledger">Ledger & Statement</option>
+                          </select>
+                        )
                       )}
 
                       {/* Value: Status */}
                       {customKey === 'status' && (
                         <select
-                          value={customValue}
+                          value={customValue || 'uploaded'}
                           onChange={(e) => setCustomValue(e.target.value)}
                           className="w-full bg-background border border-input rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring"
                         >
@@ -701,17 +786,47 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
 
                       {/* Value: Construction Site */}
                       {customKey === 'siteId' && (
-                        <select
-                          value={customValue}
-                          onChange={(e) => setCustomValue(e.target.value)}
-                          className="w-full bg-background border border-input rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                        >
-                          {sites.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.name} ({s.code})
-                            </option>
-                          ))}
-                        </select>
+                        customOperator === 'is_one_of' ? (
+                          <div className="max-h-28 overflow-y-auto custom-scrollbar border border-input rounded-xl p-2 bg-background space-y-1">
+                            {sites.map((s) => {
+                              const list = Array.isArray(customValue) ? customValue : [];
+                              const isChecked = list.includes(s.id);
+                              return (
+                                <label
+                                  key={s.id}
+                                  className="flex items-center gap-2 text-xs text-foreground hover:bg-muted/50 p-1 rounded cursor-pointer"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => {
+                                      if (isChecked) {
+                                        setCustomValue(list.filter((id: string) => id !== s.id));
+                                      } else {
+                                        setCustomValue([...list, s.id]);
+                                      }
+                                    }}
+                                    className="rounded border-input text-primary focus:ring-primary h-3.5 w-3.5"
+                                  />
+                                  <span className="truncate">{s.name} ({s.code})</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <select
+                            value={Array.isArray(customValue) ? customValue[0] : (customValue || '')}
+                            onChange={(e) => setCustomValue(e.target.value)}
+                            className="w-full bg-background border border-input rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                          >
+                            <option value="">Select a Construction Site...</option>
+                            {sites.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.name} ({s.code})
+                              </option>
+                            ))}
+                          </select>
+                        )
                       )}
 
                       {/* Value: Text (Vendor, Invoice #, Uploaded By) */}
@@ -720,7 +835,15 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
                         customKey === 'uploadedBy') && (
                         <input
                           type="text"
-                          placeholder="Type match value..."
+                          placeholder={
+                            customOperator === 'starts_with'
+                              ? 'Starts with prefix...'
+                              : customOperator === 'equals'
+                              ? 'Exact match string...'
+                              : customOperator === 'not_equals'
+                              ? 'Exclude string...'
+                              : 'Type contains value...'
+                          }
                           value={customValue || ''}
                           onChange={(e) => setCustomValue(e.target.value)}
                           className="w-full bg-background border border-input rounded-xl px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring"
@@ -729,26 +852,94 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
 
                       {/* Value: Amount */}
                       {customKey === 'amount' && (
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
-                          <input
-                            type="number"
-                            placeholder="0.00"
-                            value={customValue || ''}
-                            onChange={(e) => setCustomValue(e.target.value)}
-                            className="w-full bg-background border border-input pl-7 pr-3 py-2 text-xs font-mono text-emerald-400 font-bold rounded-xl focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                          />
-                        </div>
+                        customOperator === 'between' ? (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">Min ₹</span>
+                              <input
+                                type="number"
+                                placeholder="0"
+                                value={typeof customValue === 'object' && customValue !== null ? (customValue.min ?? '') : ''}
+                                onChange={(e) =>
+                                  setCustomValue({
+                                    ...(typeof customValue === 'object' && customValue !== null ? customValue : {}),
+                                    min: e.target.value,
+                                  })
+                                }
+                                className="w-full bg-background border border-input pl-14 pr-2 py-2 text-xs font-mono text-emerald-400 font-bold rounded-xl focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                              />
+                            </div>
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">Max ₹</span>
+                              <input
+                                type="number"
+                                placeholder="Max"
+                                value={typeof customValue === 'object' && customValue !== null ? (customValue.max ?? '') : ''}
+                                onChange={(e) =>
+                                  setCustomValue({
+                                    ...(typeof customValue === 'object' && customValue !== null ? customValue : {}),
+                                    max: e.target.value,
+                                  })
+                                }
+                                className="w-full bg-background border border-input pl-14 pr-2 py-2 text-xs font-mono text-emerald-400 font-bold rounded-xl focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
+                            <input
+                              type="number"
+                              placeholder="0.00"
+                              value={typeof customValue === 'object' && customValue !== null ? (customValue.min || '') : (customValue || '')}
+                              onChange={(e) => setCustomValue(e.target.value)}
+                              className="w-full bg-background border border-input pl-7 pr-3 py-2 text-xs font-mono text-emerald-400 font-bold rounded-xl focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                            />
+                          </div>
+                        )
                       )}
 
-                      {/* Value: Date */}
-                      {customKey === 'date' && (
-                        <input
-                          type="date"
-                          value={customValue || ''}
-                          onChange={(e) => setCustomValue(e.target.value)}
-                          className="w-full bg-background border border-input px-3 py-2 text-xs font-mono text-foreground rounded-xl focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring"
-                        />
+                      {/* Value: Date or Uploaded Date */}
+                      {(customKey === 'date' || customKey === 'createdAt') && (
+                        customOperator === 'between' ? (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <span className="block text-[9px] text-muted-foreground mb-0.5">From Date:</span>
+                              <input
+                                type="date"
+                                value={typeof customValue === 'object' && customValue !== null ? (customValue.from ?? '') : ''}
+                                onChange={(e) =>
+                                  setCustomValue({
+                                    ...(typeof customValue === 'object' && customValue !== null ? customValue : {}),
+                                    from: e.target.value,
+                                  })
+                                }
+                                className="w-full bg-background border border-input px-2.5 py-1.5 text-xs font-mono text-foreground rounded-xl focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                              />
+                            </div>
+                            <div>
+                              <span className="block text-[9px] text-muted-foreground mb-0.5">To Date:</span>
+                              <input
+                                type="date"
+                                value={typeof customValue === 'object' && customValue !== null ? (customValue.to ?? '') : ''}
+                                onChange={(e) =>
+                                  setCustomValue({
+                                    ...(typeof customValue === 'object' && customValue !== null ? customValue : {}),
+                                    to: e.target.value,
+                                  })
+                                }
+                                className="w-full bg-background border border-input px-2.5 py-1.5 text-xs font-mono text-foreground rounded-xl focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <input
+                            type="date"
+                            value={typeof customValue === 'object' && customValue !== null ? (customValue.from || '') : (customValue || '')}
+                            onChange={(e) => setCustomValue(e.target.value)}
+                            className="w-full bg-background border border-input px-3 py-2 text-xs font-mono text-foreground rounded-xl focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring"
+                          />
+                        )
                       )}
                     </div>
                   </div>

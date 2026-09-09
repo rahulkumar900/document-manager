@@ -15,78 +15,102 @@ export const FILTER_KEY_OPTIONS: { key: FilterKey; label: string; group: 'Catego
 
 export const OPERATOR_OPTIONS: Record<FilterKey, { operator: FilterOperator; label: string }[]> = {
   type: [
+    { operator: 'equals', label: 'is (=)' },
+    { operator: 'not_equals', label: 'is not (≠)' },
     { operator: 'is_one_of', label: 'is one of' },
-    { operator: 'equals', label: 'is' },
-    { operator: 'not_equals', label: 'is not' },
   ],
   status: [
-    { operator: 'equals', label: 'is' },
-    { operator: 'not_equals', label: 'is not' },
+    { operator: 'equals', label: 'is (=)' },
+    { operator: 'not_equals', label: 'is not (≠)' },
   ],
   siteId: [
+    { operator: 'equals', label: 'is (=)' },
+    { operator: 'not_equals', label: 'is not (≠)' },
     { operator: 'is_one_of', label: 'is one of' },
-    { operator: 'equals', label: 'is' },
-    { operator: 'not_equals', label: 'is not' },
   ],
   vendorName: [
     { operator: 'contains', label: 'contains' },
-    { operator: 'equals', label: 'equals' },
+    { operator: 'equals', label: 'equals (=)' },
     { operator: 'starts_with', label: 'starts with' },
+    { operator: 'not_equals', label: 'does not equal (≠)' },
   ],
   invoiceNumber: [
     { operator: 'contains', label: 'contains' },
-    { operator: 'equals', label: 'equals' },
+    { operator: 'equals', label: 'equals (=)' },
     { operator: 'starts_with', label: 'starts with' },
+    { operator: 'not_equals', label: 'does not equal (≠)' },
   ],
   uploadedBy: [
     { operator: 'contains', label: 'contains' },
-    { operator: 'equals', label: 'equals' },
+    { operator: 'equals', label: 'equals (=)' },
+    { operator: 'starts_with', label: 'starts with' },
+    { operator: 'not_equals', label: 'does not equal (≠)' },
   ],
   amount: [
     { operator: 'greater_than', label: 'greater than or equal to (>=)' },
     { operator: 'less_than', label: 'less than or equal to (<=)' },
-    { operator: 'between', label: 'is between' },
+    { operator: 'between', label: 'is between range' },
     { operator: 'equals', label: 'exactly equals (=)' },
   ],
   date: [
-    { operator: 'between', label: 'is between' },
+    { operator: 'equals', label: 'exact date (=)' },
+    { operator: 'between', label: 'is between range' },
     { operator: 'greater_than', label: 'on or after (>=)' },
     { operator: 'less_than', label: 'on or before (<=)' },
-    { operator: 'equals', label: 'exact date (=)' },
   ],
   createdAt: [
-    { operator: 'between', label: 'is between' },
+    { operator: 'equals', label: 'exact date (=)' },
+    { operator: 'between', label: 'is between range' },
     { operator: 'greater_than', label: 'on or after (>=)' },
     { operator: 'less_than', label: 'on or before (<=)' },
-    { operator: 'equals', label: 'exact date (=)' },
   ],
 };
 
-export const createDefaultFilterRule = (key: FilterKey = 'type'): FilterRule => {
+export const createDefaultFilterRule = (
+  key: FilterKey = 'type',
+  operator?: FilterOperator
+): FilterRule => {
   const id = generateUUID();
+  const defaultOp = operator || OPERATOR_OPTIONS[key][0].operator;
+
   switch (key) {
     case 'type':
-      return { id, key, operator: 'is_one_of', value: ['Invoice'] };
+      return {
+        id,
+        key,
+        operator: defaultOp,
+        value: defaultOp === 'is_one_of' ? ['Invoice'] : 'Invoice',
+      };
     case 'status':
-      return { id, key, operator: 'equals', value: 'uploaded' };
+      return { id, key, operator: defaultOp, value: 'uploaded' };
     case 'siteId':
-      return { id, key, operator: 'is_one_of', value: [] };
+      return {
+        id,
+        key,
+        operator: defaultOp,
+        value: defaultOp === 'is_one_of' ? [] : '',
+      };
     case 'vendorName':
     case 'invoiceNumber':
     case 'uploadedBy':
-      return { id, key, operator: 'contains', value: '' };
+      return { id, key, operator: defaultOp, value: '' };
     case 'amount':
-      return { id, key, operator: 'greater_than', value: '' };
+      return {
+        id,
+        key,
+        operator: defaultOp,
+        value: defaultOp === 'between' ? { min: '', max: '' } : '',
+      };
     case 'date':
     case 'createdAt':
       return {
         id,
         key,
-        operator: 'between',
-        value: { from: '', to: '' },
+        operator: defaultOp,
+        value: defaultOp === 'between' ? { from: '', to: '' } : '',
       };
     default:
-      return { id, key, operator: 'equals', value: '' };
+      return { id, key, operator: defaultOp, value: '' };
   }
 };
 
@@ -98,6 +122,20 @@ export function matchDocumentRule(doc: DocumentRecord, rule: FilterRule): boolea
 
   if (value === undefined || value === null || value === '') {
     return true; // Skip blank / incomplete rule
+  }
+
+  if (Array.isArray(value) && value.length === 0) {
+    return true;
+  }
+
+  if (operator === 'between' && typeof value === 'object') {
+    if (key === 'amount') {
+      const minEmpty = value.min === undefined || value.min === '';
+      const maxEmpty = value.max === undefined || value.max === '';
+      if (minEmpty && maxEmpty) return true;
+    } else if (key === 'date' || key === 'createdAt') {
+      if (!value.from && !value.to) return true;
+    }
   }
 
   switch (key) {
@@ -135,6 +173,7 @@ export function matchDocumentRule(doc: DocumentRecord, rule: FilterRule): boolea
       if (!val) return true;
       if (operator === 'contains') return target.includes(val);
       if (operator === 'equals') return target === val;
+      if (operator === 'not_equals') return target !== val;
       if (operator === 'starts_with') return target.startsWith(val);
       return true;
     }
@@ -145,6 +184,7 @@ export function matchDocumentRule(doc: DocumentRecord, rule: FilterRule): boolea
       if (!val) return true;
       if (operator === 'contains') return target.includes(val);
       if (operator === 'equals') return target === val;
+      if (operator === 'not_equals') return target !== val;
       if (operator === 'starts_with') return target.startsWith(val);
       return true;
     }
@@ -155,6 +195,8 @@ export function matchDocumentRule(doc: DocumentRecord, rule: FilterRule): boolea
       if (!val) return true;
       if (operator === 'contains') return target.includes(val);
       if (operator === 'equals') return target === val;
+      if (operator === 'not_equals') return target !== val;
+      if (operator === 'starts_with') return target.startsWith(val);
       return true;
     }
 
@@ -245,12 +287,18 @@ export function formatRuleLabel(rule: FilterRule, siteMap: Map<string, SiteRecor
       const names = siteIds.map((id) => siteMap.get(id)?.code || siteMap.get(id)?.name || 'Site').join(', ');
       return `Site: ${names || 'Selected'}`;
     }
-    case 'vendorName':
-      return `Vendor ${operator === 'contains' ? 'contains' : '='} "${value}"`;
-    case 'invoiceNumber':
-      return `Ref/Invoice # ${operator === 'contains' ? 'contains' : '='} "${value}"`;
-    case 'uploadedBy':
-      return `Uploaded by: "${value}"`;
+    case 'vendorName': {
+      const opLabel = operator === 'contains' ? 'contains' : operator === 'starts_with' ? 'starts with' : operator === 'not_equals' ? '≠' : '=';
+      return `Vendor ${opLabel} "${value}"`;
+    }
+    case 'invoiceNumber': {
+      const opLabel = operator === 'contains' ? 'contains' : operator === 'starts_with' ? 'starts with' : operator === 'not_equals' ? '≠' : '=';
+      return `Ref/Invoice # ${opLabel} "${value}"`;
+    }
+    case 'uploadedBy': {
+      const opLabel = operator === 'contains' ? 'contains' : operator === 'starts_with' ? 'starts with' : operator === 'not_equals' ? '≠' : '=';
+      return `Uploaded by ${opLabel} "${value}"`;
+    }
     case 'amount': {
       if (operator === 'between') {
         const min = value?.min ? formatCurrency(parseFloat(value.min)) : '₹0';
