@@ -64,8 +64,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
 
   return (
     <div className="w-full h-auto bg-card border border-border rounded-3xl shadow-xl mb-8 relative overflow-hidden">
-      {/* 1. Mobile Optimized Card List View (< sm screens) */}
-      <div className="block sm:hidden divide-y divide-border/80">
+      {/* 1. Mobile & Small Tablet Optimized Card List View (< md screens) */}
+      <div className="block md:hidden divide-y divide-border/80">
         {/* Mobile Page Select All Header */}
         <div className="p-3.5 bg-muted/50 flex items-center justify-between border-b border-border text-xs">
           <button
@@ -204,12 +204,12 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
         )}
       </div>
 
-      {/* 2. Tablet & Desktop Full Table View (>= sm screens) */}
-      <div className="hidden sm:block w-full h-auto overflow-x-auto rounded-3xl">
-        <table className="w-full h-auto text-left text-xs sm:text-sm">
+      {/* 2. Tablet & Desktop Full Table View (>= md screens with horizontal scrolling) */}
+      <div className="hidden md:block w-full overflow-x-auto custom-scrollbar">
+        <table className="w-full min-w-[960px] table-auto text-left text-xs sm:text-sm">
           <thead>
             <tr className="bg-muted/40 border-b border-border text-[11px] font-black uppercase tracking-wider text-muted-foreground">
-              <th className="py-4 px-3.5 w-10 text-center">
+              <th className="py-3.5 px-3 w-10 text-center">
                 <button
                   type="button"
                   onClick={onToggleSelectPage}
@@ -225,7 +225,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                 </button>
               </th>
               <th
-                className={`py-4 px-3.5 ${getHeaderSortClass('vendorName')}`}
+                className={`py-3.5 px-3 ${getHeaderSortClass('vendorName')}`}
                 onClick={() => onSort && onSort('vendorName')}
                 title="Sort by Vendor / Supplier"
               >
@@ -235,7 +235,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                 </div>
               </th>
               <th
-                className={`py-4 px-3.5 ${getHeaderSortClass('invoiceNumber')}`}
+                className={`py-3.5 px-3 ${getHeaderSortClass('invoiceNumber')}`}
                 onClick={() => onSort && onSort('invoiceNumber')}
                 title="Sort by Invoice / Ref #"
               >
@@ -245,7 +245,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                 </div>
               </th>
               <th
-                className={`py-4 px-3.5 ${getHeaderSortClass('site')}`}
+                className={`py-3.5 px-3 ${getHeaderSortClass('site')}`}
                 onClick={() => onSort && onSort('site')}
                 title="Sort by Site"
               >
@@ -255,27 +255,27 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                 </div>
               </th>
               <th
-                className={`py-4 px-3.5 ${getHeaderSortClass('date')}`}
+                className={`py-3.5 px-3 ${getHeaderSortClass('date')}`}
                 onClick={() => onSort && onSort('date')}
                 title="Sort by Invoice Date"
               >
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 whitespace-nowrap">
                   <span>Doc Date</span>
                   {renderSortIndicator('date')}
                 </div>
               </th>
               <th
-                className={`py-4 px-3.5 ${getHeaderSortClass('createdAt')}`}
+                className={`py-3.5 px-3 ${getHeaderSortClass('createdAt')}`}
                 onClick={() => onSort && onSort('createdAt')}
                 title="Sort by Uploaded Date"
               >
-                <div className="flex items-center gap-1">
-                  <span>Uploaded Date</span>
+                <div className="flex items-center gap-1 whitespace-nowrap">
+                  <span>Uploaded</span>
                   {renderSortIndicator('createdAt')}
                 </div>
               </th>
               <th
-                className={`py-4 px-3.5 ${getHeaderSortClass('type')}`}
+                className={`py-3.5 px-3 ${getHeaderSortClass('type')}`}
                 onClick={() => onSort && onSort('type')}
                 title="Sort by Type"
               >
@@ -285,7 +285,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                 </div>
               </th>
               <th
-                className={`py-4 px-3.5 text-right ${getHeaderSortClass('amount')}`}
+                className={`py-3.5 px-3 text-right ${getHeaderSortClass('amount')}`}
                 onClick={() => onSort && onSort('amount')}
                 title="Sort by Amount"
               >
@@ -295,7 +295,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                 </div>
               </th>
               <th
-                className={`py-4 px-3.5 text-center ${getHeaderSortClass('status')}`}
+                className={`py-3.5 px-3 text-center ${getHeaderSortClass('status')}`}
                 onClick={() => onSort && onSort('status')}
                 title="Sort by Verification Status"
               >
@@ -304,7 +304,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                   {renderSortIndicator('status')}
                 </div>
               </th>
-              <th className="py-4 px-3.5 text-right">Actions</th>
+              <th className="py-3.5 px-3 text-right whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border font-medium h-auto">
@@ -324,7 +324,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                 >
                   {/* Row Checkbox */}
                   <td
-                    className="py-4 px-3.5 text-center"
+                    className="py-3 px-3 text-center"
                     onClick={(e) => {
                       e.stopPropagation();
                       onToggleSelect(doc.id);
@@ -343,47 +343,47 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                     </button>
                   </td>
 
-                  <td className="py-4 px-3.5">
-                    <div className="font-bold text-foreground group-hover:text-primary transition-colors truncate max-w-[200px]">
+                  <td className="py-3 px-3 max-w-[180px]">
+                    <div className="font-bold text-foreground group-hover:text-primary transition-colors truncate">
                       {doc.vendorName}
                     </div>
-                    <div className="text-[11px] text-muted-foreground font-mono">
+                    <div className="text-[11px] text-muted-foreground font-mono truncate">
                       By {doc.uploadedBy}
                     </div>
                   </td>
 
-                  <td className="py-4 px-3.5 font-mono text-foreground whitespace-nowrap">
+                  <td className="py-3 px-3 font-mono text-foreground whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
-                      <span>{doc.invoiceNumber}</span>
+                      <span className="font-semibold">{doc.invoiceNumber}</span>
                       {doc.fileUrl && (
                         <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" title="Cloud File Uploaded" />
                       )}
                     </div>
                   </td>
 
-                  <td className="py-4 px-3.5 whitespace-nowrap">
-                    <div className="text-foreground font-semibold">{site?.name || 'Unassigned'}</div>
+                  <td className="py-3 px-3 max-w-[140px]">
+                    <div className="text-foreground font-semibold truncate">{site?.name || 'Unassigned'}</div>
                     <div className="text-[10px] font-mono text-muted-foreground">{site?.code || 'SITE'}</div>
                   </td>
 
-                  <td className="py-4 px-3.5 font-mono text-muted-foreground whitespace-nowrap">
+                  <td className="py-3 px-3 font-mono text-muted-foreground whitespace-nowrap">
                     {formatDate(doc.date)}
                   </td>
 
                   {/* Uploaded Date Column */}
-                  <td className="py-4 px-3.5 font-mono text-muted-foreground whitespace-nowrap" title={formatDateTime(doc.createdAt)}>
+                  <td className="py-3 px-3 font-mono text-muted-foreground whitespace-nowrap" title={formatDateTime(doc.createdAt)}>
                     <div className="text-foreground font-medium text-xs">
                       {formatDate(doc.createdAt)}
                     </div>
                     <div className="text-[10px] text-muted-foreground/80 flex items-center gap-1">
-                      <Icons.Clock className="w-2.5 h-2.5" />
+                      <Icons.Clock className="w-2.5 h-2.5 shrink-0" />
                       <span>{formatRelativeDate(doc.createdAt)}</span>
                     </div>
                   </td>
 
-                  <td className="py-4 px-3.5 whitespace-nowrap">
+                  <td className="py-3 px-3 whitespace-nowrap">
                     <span
-                      className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                      className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                         doc.type === 'Invoice'
                           ? 'bg-secondary text-secondary-foreground border-border'
                           : doc.type === 'Challan'
@@ -397,13 +397,13 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                     </span>
                   </td>
 
-                  <td className="py-4 px-3.5 text-right font-mono font-bold text-foreground whitespace-nowrap">
+                  <td className="py-3 px-3 text-right font-mono font-bold text-foreground whitespace-nowrap">
                     {formatCurrency(doc.amount)}
                   </td>
 
-                  <td className="py-4 px-3.5 text-center whitespace-nowrap">
+                  <td className="py-3 px-3 text-center whitespace-nowrap">
                     <span
-                      className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full border ${
+                      className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                         doc.status === 'verified'
                           ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800/80'
                           : 'bg-amber-950/80 text-amber-300 border-amber-800/80'
@@ -424,7 +424,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                   </td>
 
                   <td
-                    className="py-4 px-3.5 text-right relative whitespace-nowrap"
+                    className="py-3 px-3 text-right relative whitespace-nowrap"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="flex items-center justify-end">
@@ -446,10 +446,10 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
           {documents.length > 0 && (
             <tfoot className="bg-muted/40 border-t-2 border-border text-xs font-bold">
               <tr>
-                <td className="py-4 px-3.5 text-center">
+                <td className="py-3 px-3 text-center">
                   <span className="w-2 h-2 rounded-full bg-primary inline-block" />
                 </td>
-                <td className="py-4 px-3.5 text-foreground uppercase tracking-wider font-mono text-[11px]" colSpan={5}>
+                <td className="py-3 px-3 text-foreground uppercase tracking-wider font-mono text-[11px]" colSpan={5}>
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">Page Total:</span>
                     <span className="text-foreground font-bold font-sans">
@@ -457,15 +457,15 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                     </span>
                   </div>
                 </td>
-                <td className="py-4 px-3.5 text-right uppercase tracking-wider text-muted-foreground text-[11px]">
+                <td className="py-3 px-3 text-right uppercase tracking-wider text-muted-foreground text-[11px]">
                   Total:
                 </td>
-                <td className="py-4 px-3.5 text-right font-mono font-black text-sm text-emerald-400 whitespace-nowrap">
+                <td className="py-3 px-3 text-right font-mono font-black text-sm text-emerald-400 whitespace-nowrap">
                   {formatCurrency(
                     documents.reduce((sum, doc) => sum + (Number(doc.amount) || 0), 0)
                   )}
                 </td>
-                <td className="py-4 px-3.5" colSpan={2} />
+                <td className="py-3 px-3" colSpan={2} />
               </tr>
             </tfoot>
           )}

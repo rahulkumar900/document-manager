@@ -776,7 +776,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
         </div>
 
         {/* Right: Layout Toggle, Export Button & Upload CTA */}
-        <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0">
+        <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 flex-wrap">
           {/* Export Selected Items Button - Active only when items are selected */}
           {totalDocumentCount > 0 && (
             <button
