@@ -1,6 +1,6 @@
 import React from 'react';
-import { DocumentRecord, SiteRecord, UserAccount } from '@/lib/types';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { DocumentRecord, SiteRecord, UserAccount, SortField, SortOrder } from '@/lib/types';
+import { formatCurrency, formatDate, formatRelativeDate, formatDateTime } from '@/lib/utils';
 import { Icons } from '../ui/icons';
 import { DocumentActionMenu } from './DocumentActionMenu';
 
@@ -16,6 +16,9 @@ interface DocumentTableProps {
   onVerify: (docId: string) => void;
   onEdit: (doc: DocumentRecord) => void;
   onDelete: (doc: DocumentRecord) => void;
+  sortField?: SortField;
+  sortOrder?: SortOrder;
+  onSort?: (field: SortField) => void;
 }
 
 export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
@@ -30,7 +33,35 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
   onVerify,
   onEdit,
   onDelete,
+  sortField,
+  sortOrder = 'desc',
+  onSort,
 }) => {
+  const renderSortIndicator = (field: SortField) => {
+    if (!onSort) return null;
+    const isActive = sortField === field;
+
+    if (!isActive) {
+      return (
+        <Icons.ArrowUpDown className="w-3 h-3 text-muted-foreground/40 group-hover/th:text-muted-foreground transition-colors ml-1 inline-block shrink-0" />
+      );
+    }
+
+    return sortOrder === 'asc' ? (
+      <Icons.ChevronUp className="w-3.5 h-3.5 text-primary transition-transform ml-1 inline-block shrink-0 stroke-[2.5]" />
+    ) : (
+      <Icons.ChevronDown className="w-3.5 h-3.5 text-primary transition-transform ml-1 inline-block shrink-0 stroke-[2.5]" />
+    );
+  };
+
+  const getHeaderSortClass = (field: SortField) => {
+    if (!onSort) return '';
+    const isActive = sortField === field;
+    return `cursor-pointer select-none group/th transition-colors hover:text-foreground ${
+      isActive ? 'text-primary font-black' : 'text-muted-foreground'
+    }`;
+  };
+
   return (
     <div className="w-full h-auto bg-card border border-border rounded-3xl shadow-xl mb-8 relative overflow-hidden">
       {/* 1. Mobile Optimized Card List View (< sm screens) */}
@@ -111,12 +142,18 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                     <div className="text-xs font-mono text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
                       <span className="text-foreground font-semibold">{doc.invoiceNumber}</span>
                       <span>•</span>
-                      <span>{formatDate(doc.date)}</span>
+                      <span>Doc: {formatDate(doc.date)}</span>
                     </div>
 
-                    <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1.5">
-                      <Icons.Building className="w-3 h-3 text-muted-foreground shrink-0" />
-                      <span className="truncate">{site ? `${site.name} (${site.code})` : 'Unassigned'}</span>
+                    <div className="text-[11px] text-muted-foreground mt-1 flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Icons.Building className="w-3 h-3 text-muted-foreground shrink-0" />
+                        <span className="truncate">{site ? `${site.name} (${site.code})` : 'Unassigned'}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground/80 font-mono">
+                        <Icons.Clock className="w-2.5 h-2.5" />
+                        <span>Uploaded {formatRelativeDate(doc.createdAt)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -172,7 +209,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
         <table className="w-full h-auto text-left text-xs sm:text-sm">
           <thead>
             <tr className="bg-muted/40 border-b border-border text-[11px] font-black uppercase tracking-wider text-muted-foreground">
-              <th className="py-4 px-4 w-10 text-center">
+              <th className="py-4 px-3.5 w-10 text-center">
                 <button
                   type="button"
                   onClick={onToggleSelectPage}
@@ -187,14 +224,87 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                   <Icons.Check className="w-3 h-3 stroke-[3]" />
                 </button>
               </th>
-              <th className="py-4 px-4">Vendor / Supplier</th>
-              <th className="py-4 px-4">Invoice #</th>
-              <th className="py-4 px-4">Site</th>
-              <th className="py-4 px-4">Date</th>
-              <th className="py-4 px-4">Type</th>
-              <th className="py-4 px-4 text-right">Amount</th>
-              <th className="py-4 px-4 text-center">Status</th>
-              <th className="py-4 px-4 text-right">Actions</th>
+              <th
+                className={`py-4 px-3.5 ${getHeaderSortClass('vendorName')}`}
+                onClick={() => onSort && onSort('vendorName')}
+                title="Sort by Vendor / Supplier"
+              >
+                <div className="flex items-center gap-1">
+                  <span>Vendor / Supplier</span>
+                  {renderSortIndicator('vendorName')}
+                </div>
+              </th>
+              <th
+                className={`py-4 px-3.5 ${getHeaderSortClass('invoiceNumber')}`}
+                onClick={() => onSort && onSort('invoiceNumber')}
+                title="Sort by Invoice / Ref #"
+              >
+                <div className="flex items-center gap-1">
+                  <span>Invoice #</span>
+                  {renderSortIndicator('invoiceNumber')}
+                </div>
+              </th>
+              <th
+                className={`py-4 px-3.5 ${getHeaderSortClass('site')}`}
+                onClick={() => onSort && onSort('site')}
+                title="Sort by Site"
+              >
+                <div className="flex items-center gap-1">
+                  <span>Site</span>
+                  {renderSortIndicator('site')}
+                </div>
+              </th>
+              <th
+                className={`py-4 px-3.5 ${getHeaderSortClass('date')}`}
+                onClick={() => onSort && onSort('date')}
+                title="Sort by Invoice Date"
+              >
+                <div className="flex items-center gap-1">
+                  <span>Doc Date</span>
+                  {renderSortIndicator('date')}
+                </div>
+              </th>
+              <th
+                className={`py-4 px-3.5 ${getHeaderSortClass('createdAt')}`}
+                onClick={() => onSort && onSort('createdAt')}
+                title="Sort by Uploaded Date"
+              >
+                <div className="flex items-center gap-1">
+                  <span>Uploaded Date</span>
+                  {renderSortIndicator('createdAt')}
+                </div>
+              </th>
+              <th
+                className={`py-4 px-3.5 ${getHeaderSortClass('type')}`}
+                onClick={() => onSort && onSort('type')}
+                title="Sort by Type"
+              >
+                <div className="flex items-center gap-1">
+                  <span>Type</span>
+                  {renderSortIndicator('type')}
+                </div>
+              </th>
+              <th
+                className={`py-4 px-3.5 text-right ${getHeaderSortClass('amount')}`}
+                onClick={() => onSort && onSort('amount')}
+                title="Sort by Amount"
+              >
+                <div className="flex items-center justify-end gap-1">
+                  <span>Amount</span>
+                  {renderSortIndicator('amount')}
+                </div>
+              </th>
+              <th
+                className={`py-4 px-3.5 text-center ${getHeaderSortClass('status')}`}
+                onClick={() => onSort && onSort('status')}
+                title="Sort by Verification Status"
+              >
+                <div className="flex items-center justify-center gap-1">
+                  <span>Status</span>
+                  {renderSortIndicator('status')}
+                </div>
+              </th>
+              <th className="py-4 px-3.5 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border font-medium h-auto">
@@ -214,7 +324,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                 >
                   {/* Row Checkbox */}
                   <td
-                    className="py-4 px-4 text-center"
+                    className="py-4 px-3.5 text-center"
                     onClick={(e) => {
                       e.stopPropagation();
                       onToggleSelect(doc.id);
@@ -233,8 +343,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                     </button>
                   </td>
 
-                  <td className="py-4 px-4">
-                    <div className="font-bold text-foreground group-hover:text-primary transition-colors">
+                  <td className="py-4 px-3.5">
+                    <div className="font-bold text-foreground group-hover:text-primary transition-colors truncate max-w-[200px]">
                       {doc.vendorName}
                     </div>
                     <div className="text-[11px] text-muted-foreground font-mono">
@@ -242,25 +352,36 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                     </div>
                   </td>
 
-                  <td className="py-4 px-4 font-mono text-foreground">
+                  <td className="py-4 px-3.5 font-mono text-foreground whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
                       <span>{doc.invoiceNumber}</span>
                       {doc.fileUrl && (
-                        <span className="w-2 h-2 rounded-full bg-emerald-400" title="Cloud File Uploaded" />
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" title="Cloud File Uploaded" />
                       )}
                     </div>
                   </td>
 
-                  <td className="py-4 px-4">
+                  <td className="py-4 px-3.5 whitespace-nowrap">
                     <div className="text-foreground font-semibold">{site?.name || 'Unassigned'}</div>
                     <div className="text-[10px] font-mono text-muted-foreground">{site?.code || 'SITE'}</div>
                   </td>
 
-                  <td className="py-4 px-4 font-mono text-muted-foreground">
+                  <td className="py-4 px-3.5 font-mono text-muted-foreground whitespace-nowrap">
                     {formatDate(doc.date)}
                   </td>
 
-                  <td className="py-4 px-4">
+                  {/* Uploaded Date Column */}
+                  <td className="py-4 px-3.5 font-mono text-muted-foreground whitespace-nowrap" title={formatDateTime(doc.createdAt)}>
+                    <div className="text-foreground font-medium text-xs">
+                      {formatDate(doc.createdAt)}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground/80 flex items-center gap-1">
+                      <Icons.Clock className="w-2.5 h-2.5" />
+                      <span>{formatRelativeDate(doc.createdAt)}</span>
+                    </div>
+                  </td>
+
+                  <td className="py-4 px-3.5 whitespace-nowrap">
                     <span
                       className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${
                         doc.type === 'Invoice'
@@ -276,11 +397,11 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                     </span>
                   </td>
 
-                  <td className="py-4 px-4 text-right font-mono font-bold text-foreground">
+                  <td className="py-4 px-3.5 text-right font-mono font-bold text-foreground whitespace-nowrap">
                     {formatCurrency(doc.amount)}
                   </td>
 
-                  <td className="py-4 px-4 text-center">
+                  <td className="py-4 px-3.5 text-center whitespace-nowrap">
                     <span
                       className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full border ${
                         doc.status === 'verified'
@@ -303,7 +424,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                   </td>
 
                   <td
-                    className="py-4 px-4 text-right relative"
+                    className="py-4 px-3.5 text-right relative whitespace-nowrap"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="flex items-center justify-end">
@@ -325,10 +446,10 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
           {documents.length > 0 && (
             <tfoot className="bg-muted/40 border-t-2 border-border text-xs font-bold">
               <tr>
-                <td className="py-4 px-4 text-center">
+                <td className="py-4 px-3.5 text-center">
                   <span className="w-2 h-2 rounded-full bg-primary inline-block" />
                 </td>
-                <td className="py-4 px-4 text-foreground uppercase tracking-wider font-mono text-[11px]" colSpan={4}>
+                <td className="py-4 px-3.5 text-foreground uppercase tracking-wider font-mono text-[11px]" colSpan={5}>
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">Page Total:</span>
                     <span className="text-foreground font-bold font-sans">
@@ -336,15 +457,15 @@ export const DocumentTable: React.FC<DocumentTableProps> = React.memo(({
                     </span>
                   </div>
                 </td>
-                <td className="py-4 px-4 text-right uppercase tracking-wider text-muted-foreground text-[11px]">
+                <td className="py-4 px-3.5 text-right uppercase tracking-wider text-muted-foreground text-[11px]">
                   Total:
                 </td>
-                <td className="py-4 px-4 text-right font-mono font-black text-sm text-emerald-400">
+                <td className="py-4 px-3.5 text-right font-mono font-black text-sm text-emerald-400 whitespace-nowrap">
                   {formatCurrency(
                     documents.reduce((sum, doc) => sum + (Number(doc.amount) || 0), 0)
                   )}
                 </td>
-                <td className="py-4 px-4" colSpan={2} />
+                <td className="py-4 px-3.5" colSpan={2} />
               </tr>
             </tfoot>
           )}

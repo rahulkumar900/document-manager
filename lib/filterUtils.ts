@@ -9,7 +9,8 @@ export const FILTER_KEY_OPTIONS: { key: FilterKey; label: string; group: 'Catego
   { key: 'invoiceNumber', label: 'Invoice / Ref / Period #', group: 'Details' },
   { key: 'uploadedBy', label: 'Uploaded By', group: 'Details' },
   { key: 'amount', label: 'Total Amount (₹)', group: 'Financial' },
-  { key: 'date', label: 'Issue / Statement Date', group: 'Financial' },
+  { key: 'date', label: 'Invoice / Document Date', group: 'Financial' },
+  { key: 'createdAt', label: 'Uploaded Date', group: 'Financial' },
 ];
 
 export const OPERATOR_OPTIONS: Record<FilterKey, { operator: FilterOperator; label: string }[]> = {
@@ -53,6 +54,12 @@ export const OPERATOR_OPTIONS: Record<FilterKey, { operator: FilterOperator; lab
     { operator: 'less_than', label: 'on or before (<=)' },
     { operator: 'equals', label: 'exact date (=)' },
   ],
+  createdAt: [
+    { operator: 'between', label: 'is between' },
+    { operator: 'greater_than', label: 'on or after (>=)' },
+    { operator: 'less_than', label: 'on or before (<=)' },
+    { operator: 'equals', label: 'exact date (=)' },
+  ],
 };
 
 export const createDefaultFilterRule = (key: FilterKey = 'type'): FilterRule => {
@@ -71,6 +78,7 @@ export const createDefaultFilterRule = (key: FilterKey = 'type'): FilterRule => 
     case 'amount':
       return { id, key, operator: 'greater_than', value: '' };
     case 'date':
+    case 'createdAt':
       return {
         id,
         key,
@@ -185,6 +193,25 @@ export function matchDocumentRule(doc: DocumentRecord, rule: FilterRule): boolea
       return true;
     }
 
+    case 'createdAt': {
+      const docUploadDate = doc.createdAt ? doc.createdAt.substring(0, 10) : '';
+      if (!docUploadDate) return true;
+      if (operator === 'between') {
+        const from = typeof value === 'object' ? value?.from : '';
+        const to = typeof value === 'object' ? value?.to : '';
+        if (!from && !to) return true;
+        if (from && docUploadDate < from) return false;
+        if (to && docUploadDate > to) return false;
+        return true;
+      }
+      const targetDate = String(value || '').trim();
+      if (!targetDate) return true;
+      if (operator === 'greater_than') return docUploadDate >= targetDate;
+      if (operator === 'less_than') return docUploadDate <= targetDate;
+      if (operator === 'equals') return docUploadDate === targetDate;
+      return true;
+    }
+
     default:
       return true;
   }
@@ -246,7 +273,18 @@ export function formatRuleLabel(rule: FilterRule, siteMap: Map<string, SiteRecor
       if (operator === 'less_than') return `Date ≤ ${d}`;
       return `Date = ${d}`;
     }
+    case 'createdAt': {
+      if (operator === 'between') {
+        const from = value?.from ? formatDate(value.from) : 'Start';
+        const to = value?.to ? formatDate(value.to) : 'End';
+        return `Uploaded: ${from} → ${to}`;
+      }
+      const d = formatDate(value);
+      if (operator === 'greater_than') return `Uploaded ≥ ${d}`;
+      if (operator === 'less_than') return `Uploaded ≤ ${d}`;
+      return `Uploaded = ${d}`;
+    }
     default:
-      return `${key}: ${String(value)}`;
+      return `${key} ${operator} ${JSON.stringify(value)}`;
   }
 }

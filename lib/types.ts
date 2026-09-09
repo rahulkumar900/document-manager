@@ -45,6 +45,18 @@ export interface DocumentRecord {
 export type ViewMode = 'auth' | 'dashboard' | 'documents' | 'upload' | 'preview';
 export type DisplayLayout = 'grid' | 'list';
 
+export type SortField =
+  | 'vendorName'
+  | 'invoiceNumber'
+  | 'site'
+  | 'date'
+  | 'createdAt'
+  | 'type'
+  | 'amount'
+  | 'status';
+
+export type SortOrder = 'asc' | 'desc';
+
 export type FilterKey =
   | 'type'
   | 'status'
@@ -53,6 +65,7 @@ export type FilterKey =
   | 'invoiceNumber'
   | 'amount'
   | 'date'
+  | 'createdAt'
   | 'uploadedBy';
 
 export type FilterOperator =

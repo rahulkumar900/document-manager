@@ -9,6 +9,8 @@ import {
   ViewMode,
   DisplayLayout,
   FilterRule,
+  SortField,
+  SortOrder,
   getStoredUsers,
   getStoredSites,
   getStoredDocuments,
@@ -96,7 +98,9 @@ function DocumentPortalContent() {
           (key === 'site' && val === 'all') ||
           (key === 'page' && val === '1') ||
           (key === 'layout' && val === 'grid') ||
-          (key === 'view' && val === 'documents')
+          (key === 'view' && val === 'documents') ||
+          (key === 'sort' && val === 'createdAt') ||
+          (key === 'order' && val === 'desc')
         ) {
           params.delete(key);
         } else {
@@ -130,6 +134,8 @@ function DocumentPortalContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(6);
   const [selectedSiteFilter, setSelectedSiteFilter] = useState<string>('all');
+  const [sortField, setSortField] = useState<SortField>('createdAt');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   // Multi-Selection State
   const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
@@ -286,6 +292,21 @@ function DocumentPortalContent() {
       } else {
         setSelectedSiteFilter('all');
       }
+
+      // Sync Sort & Order
+      const sortParam = searchParams.get('sort') as SortField | null;
+      if (sortParam && ['vendorName', 'invoiceNumber', 'site', 'date', 'createdAt', 'type', 'amount', 'status'].includes(sortParam)) {
+        setSortField(sortParam);
+      } else {
+        setSortField('createdAt');
+      }
+
+      const orderParam = searchParams.get('order') as SortOrder | null;
+      if (orderParam && (orderParam === 'asc' || orderParam === 'desc')) {
+        setSortOrder(orderParam);
+      } else {
+        setSortOrder('desc');
+      }
     }
   }, [searchParams, isHydrated, currentUser]);
 
@@ -338,12 +359,60 @@ function DocumentPortalContent() {
     return list;
   }, [documents, currentUser, selectedSiteFilter, searchQuery, filterRules, sites]);
 
-  const totalPages = Math.ceil(filteredDocuments.length / pageSize) || 1;
+  // Sort filtered documents
+  const sortedAndFilteredDocuments = useMemo(() => {
+    const list = [...filteredDocuments];
+    return list.sort((a, b) => {
+      let aVal: unknown;
+      let bVal: unknown;
+
+      if (sortField === 'site') {
+        aVal = siteMap.get(a.siteId)?.name || '';
+        bVal = siteMap.get(b.siteId)?.name || '';
+      } else {
+        aVal = a[sortField as keyof DocumentRecord];
+        bVal = b[sortField as keyof DocumentRecord];
+      }
+
+      if (sortField === 'amount') {
+        const numA = Number(aVal) || 0;
+        const numB = Number(bVal) || 0;
+        return sortOrder === 'asc' ? numA - numB : numB - numA;
+      } else if (sortField === 'date' || sortField === 'createdAt') {
+        const timeA = typeof aVal === 'string' && aVal ? new Date(aVal).getTime() : 0;
+        const timeB = typeof bVal === 'string' && bVal ? new Date(bVal).getTime() : 0;
+        return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+      }
+
+      const strA = String(aVal ?? '');
+      const strB = String(bVal ?? '');
+      const comp = strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' });
+      return sortOrder === 'asc' ? comp : -comp;
+    });
+  }, [filteredDocuments, sortField, sortOrder, siteMap]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      const nextOrder: SortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+      setSortOrder(nextOrder);
+      updateUrlParams({ order: nextOrder === 'desc' ? null : nextOrder });
+    } else {
+      setSortField(field);
+      const defaultOrder: SortOrder = (field === 'date' || field === 'createdAt' || field === 'amount') ? 'desc' : 'asc';
+      setSortOrder(defaultOrder);
+      updateUrlParams({
+        sort: field === 'createdAt' ? null : field,
+        order: defaultOrder === 'desc' ? null : defaultOrder
+      });
+    }
+  };
+
+  const totalPages = Math.ceil(sortedAndFilteredDocuments.length / pageSize) || 1;
 
   const paginatedDocuments = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return filteredDocuments.slice(start, start + pageSize);
-  }, [filteredDocuments, currentPage, pageSize]);
+    return sortedAndFilteredDocuments.slice(start, start + pageSize);
+  }, [sortedAndFilteredDocuments, currentPage, pageSize]);
 
   const isAllPageSelected = useMemo(() => {
     if (paginatedDocuments.length === 0) return false;
@@ -764,6 +833,9 @@ function DocumentPortalContent() {
                 selectedCount={selectedDocIds.size}
                 isExporting={isExporting}
                 totalDocumentCount={filteredDocuments.length}
+                sortField={sortField}
+                sortOrder={sortOrder}
+                onSortChange={handleSort}
               />
             </ErrorBoundary>
 
@@ -831,6 +903,9 @@ function DocumentPortalContent() {
                   onVerify={handleVerifyDocument}
                   onEdit={handleStartEditDocument}
                   onDelete={handleDeleteDocument}
+                  sortField={sortField}
+                  sortOrder={sortOrder}
+                  onSort={handleSort}
                 />
               )}
 

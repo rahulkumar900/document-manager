@@ -1,6 +1,6 @@
 import React from 'react';
 import { DocumentRecord, SiteRecord, UserAccount } from '@/lib/types';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatRelativeDate, formatDateTime } from '@/lib/utils';
 import { Icons } from '../ui/icons';
 import { DocumentActionMenu } from './DocumentActionMenu';
 
@@ -107,6 +107,12 @@ export const DocumentGrid: React.FC<DocumentGridProps> = React.memo(({
 
                     <span className="text-[10px] font-mono text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded border border-border shrink-0">
                       {site?.code || 'SITE'}
+                    </span>
+
+                    <span className="text-muted-foreground">•</span>
+
+                    <span className="text-[10px] text-muted-foreground/80 font-mono shrink-0">
+                      Up: {formatRelativeDate(doc.createdAt)}
                     </span>
                   </div>
 
@@ -218,10 +224,15 @@ export const DocumentGrid: React.FC<DocumentGridProps> = React.memo(({
                     <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">
                       {doc.vendorName}
                     </h3>
-                    <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground mt-1">
+                    <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground mt-1 flex-wrap">
                       <span className="text-foreground font-semibold">{doc.invoiceNumber}</span>
                       <span>•</span>
-                      <span>{formatDate(doc.date)}</span>
+                      <span>Doc: {formatDate(doc.date)}</span>
+                      <span>•</span>
+                      <span className="text-[11px] text-muted-foreground/80 flex items-center gap-1" title={`Uploaded: ${formatDateTime(doc.createdAt)}`}>
+                        <Icons.Clock className="w-3 h-3" />
+                        Uploaded {formatRelativeDate(doc.createdAt)}
+                      </span>
                     </div>
                   </div>
 

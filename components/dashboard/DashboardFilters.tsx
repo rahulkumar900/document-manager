@@ -37,6 +37,9 @@ interface DashboardFiltersProps {
   selectedCount?: number;
   isExporting?: boolean;
   totalDocumentCount: number;
+  sortField?: import('@/lib/types').SortField;
+  sortOrder?: import('@/lib/types').SortOrder;
+  onSortChange?: (field: import('@/lib/types').SortField) => void;
 }
 
 export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
@@ -59,6 +62,9 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
   selectedCount = 0,
   isExporting = false,
   totalDocumentCount,
+  sortField,
+  sortOrder = 'desc',
+  onSortChange,
 }) => {
   const isSiteAccountant = currentUser.role === 'Site Accountant';
   const hasActiveFilters =
@@ -798,6 +804,44 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
                 {selectedCount > 0 ? `Export (${selectedCount})` : 'Export'}
               </span>
             </button>
+          )}
+
+          {/* Sort Selector Dropdown in Header */}
+          {onSortChange && (
+            <div className="flex items-center bg-card rounded-2xl border border-border px-2.5 py-1.5 gap-1.5 shadow-sm">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden md:inline-flex items-center gap-1">
+                <Icons.ArrowUpDown className="w-3 h-3 text-primary" />
+                <span>Sort:</span>
+              </span>
+              <select
+                value={sortField || 'createdAt'}
+                onChange={(e) => onSortChange(e.target.value as import('@/lib/types').SortField)}
+                className="bg-transparent text-xs font-semibold text-foreground focus:outline-none cursor-pointer pr-1"
+                aria-label="Sort documents by"
+              >
+                <option value="createdAt" className="bg-popover text-popover-foreground">Uploaded Date</option>
+                <option value="date" className="bg-popover text-popover-foreground">Invoice Date</option>
+                <option value="vendorName" className="bg-popover text-popover-foreground">Vendor Name</option>
+                <option value="amount" className="bg-popover text-popover-foreground">Amount</option>
+                <option value="invoiceNumber" className="bg-popover text-popover-foreground">Invoice #</option>
+                <option value="status" className="bg-popover text-popover-foreground">Status</option>
+                <option value="type" className="bg-popover text-popover-foreground">Document Type</option>
+                <option value="site" className="bg-popover text-popover-foreground">Site</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => onSortChange(sortField || 'createdAt')}
+                className="p-1 rounded-lg hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                title={`Order: ${sortOrder === 'asc' ? 'Ascending (A-Z, Oldest first)' : 'Descending (Z-A, Newest first)'}`}
+                aria-label="Toggle sort order"
+              >
+                {sortOrder === 'asc' ? (
+                  <Icons.ChevronUp className="w-3.5 h-3.5 text-primary stroke-[2.5]" />
+                ) : (
+                  <Icons.ChevronDown className="w-3.5 h-3.5 text-primary stroke-[2.5]" />
+                )}
+              </button>
+            </div>
           )}
 
           {/* Grid / List Switcher */}
