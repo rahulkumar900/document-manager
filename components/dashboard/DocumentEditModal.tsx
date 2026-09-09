@@ -3,6 +3,7 @@ import { DocumentRecord, SiteRecord, DocumentType } from '@/lib/types';
 import { findDatabaseDuplicate, formatCurrency } from '@/lib/utils';
 import { getStoredDocuments } from '@/lib/store';
 import { Icons } from '../ui/icons';
+import { SideBySideDuplicateReviewModal } from '../preview/SideBySideDuplicateReviewModal';
 
 interface DocumentEditModalProps {
   isOpen: boolean;
@@ -28,6 +29,9 @@ export const DocumentEditModal: React.FC<DocumentEditModalProps> = ({
   const [type, setType] = useState<DocumentType>('Invoice');
   const [siteId, setSiteId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isComparisonOpen, setIsComparisonOpen] = useState(false);
+
+  const siteMap = useMemo(() => new Map(sites.map((s) => [s.id, s])), [sites]);
 
   useEffect(() => {
     if (doc) {
@@ -100,17 +104,52 @@ export const DocumentEditModal: React.FC<DocumentEditModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {duplicateConflict && (
-            <div className="p-3.5 bg-destructive/10 border border-destructive/30 rounded-2xl text-xs space-y-1 animate-in fade-in">
-              <div className="flex items-center gap-1.5 font-bold text-destructive">
-                <Icons.AlertTriangle className="w-4 h-4 shrink-0" />
-                <span>Duplicate Document Entry</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Another document with this Vendor Name, Invoice #, Date, and Amount already exists in your database:
-                <span className="font-mono text-foreground block mt-1 font-semibold">
-                  {duplicateConflict.vendorName} • #{duplicateConflict.invoiceNumber} • {duplicateConflict.date} • {formatCurrency(duplicateConflict.amount)}
+            <div className="p-3.5 bg-destructive/10 border border-destructive/30 rounded-2xl text-xs space-y-2.5 animate-in fade-in">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 font-bold text-destructive">
+                  <Icons.AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>Duplicate Document Conflict</span>
+                </div>
+                <span className="text-[10px] font-mono font-bold bg-destructive/20 text-destructive border border-destructive/30 px-2 py-0.5 rounded-md">
+                  4-Field Match
                 </span>
-              </p>
+              </div>
+              <div className="text-[11px] text-muted-foreground leading-relaxed space-y-1.5">
+                <p>Another document already exists with identical Vendor Name, Invoice #, Date, and Amount:</p>
+                <div className="p-2.5 rounded-xl bg-background/80 border border-border flex items-center justify-between gap-2 font-mono text-[11px] text-foreground">
+                  <div className="truncate">
+                    <span className="font-bold">{duplicateConflict.vendorName}</span> • #{duplicateConflict.invoiceNumber} • {duplicateConflict.date} • <span className="text-emerald-400 font-bold">{formatCurrency(duplicateConflict.amount)}</span>
+                  </div>
+                  {duplicateConflict.fileName && (
+                    <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                      ({duplicateConflict.fileName})
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-1.5 flex items-center gap-2 flex-wrap border-t border-destructive/20">
+                <button
+                  type="button"
+                  onClick={() => setIsComparisonOpen(true)}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-destructive hover:text-destructive-foreground hover:bg-destructive bg-destructive/15 border border-destructive/30 px-3 py-1.5 rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
+                >
+                  <Icons.Columns className="w-3.5 h-3.5" />
+                  <span>Review Side-by-Side</span>
+                </button>
+
+                {(duplicateConflict.fileUrl || duplicateConflict.fileData) && (
+                  <a
+                    href={duplicateConflict.fileUrl || duplicateConflict.fileData || undefined}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-secondary-foreground hover:text-foreground bg-secondary hover:bg-accent px-2.5 py-1.5 rounded-xl border border-border transition-colors"
+                  >
+                    <Icons.ExternalLink className="w-3.5 h-3.5 text-primary" />
+                    <span>Open Conflicting Doc</span>
+                  </a>
+                )}
+              </div>
             </div>
           )}
 
@@ -240,6 +279,36 @@ export const DocumentEditModal: React.FC<DocumentEditModalProps> = ({
           </div>
         </form>
       </div>
+
+      {/* Side-by-Side Duplicate Review Modal */}
+      {duplicateConflict && doc && (
+        <SideBySideDuplicateReviewModal
+          isOpen={isComparisonOpen}
+          onClose={() => setIsComparisonOpen(false)}
+          target={{
+            draft: {
+              invoice: {
+                vendorName,
+                invoiceNumber,
+                date,
+                amount,
+                type,
+                siteId,
+              },
+              file: {
+                fileName: doc.fileName,
+                fileType: doc.fileType,
+                fileSize: doc.fileSize,
+                fileData: doc.fileData,
+                blobUrl: doc.fileUrl,
+              },
+              label: `Current Document (${doc.invoiceNumber})`,
+            },
+            existingDoc: duplicateConflict,
+          }}
+          siteMap={siteMap}
+        />
+      )}
     </div>
   );
 };

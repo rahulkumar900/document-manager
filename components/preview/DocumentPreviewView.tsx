@@ -3,6 +3,7 @@ import { DocumentRecord, SiteRecord, UserAccount, DocumentType, DocumentStatus }
 import { formatCurrency, formatDate, formatFileSize, findDatabaseDuplicate } from '@/lib/utils';
 import { uploadFileToSupabaseStorage, getStoredDocuments } from '@/lib/store';
 import { Icons } from '../ui/icons';
+import { SideBySideDuplicateReviewModal } from './SideBySideDuplicateReviewModal';
 
 interface DocumentPreviewViewProps {
   document: DocumentRecord;
@@ -51,6 +52,7 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
   const [status, setStatus] = useState<DocumentStatus>(activeDocument.status);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isComparisonOpen, setIsComparisonOpen] = useState(false);
 
   useEffect(() => {
     setVendorName(activeDocument.vendorName);
@@ -663,16 +665,49 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
                 </div>
               </div>
 
-              {/* Real-time Duplicate Alert Banner */}
+              {/* Real-time Duplicate Alert Banner with details, link, and side-by-side review */}
               {duplicateMatch && (
-                <div className="p-3 bg-destructive/15 border border-destructive/30 rounded-xl text-destructive text-xs space-y-1 animate-in fade-in duration-200">
-                  <div className="flex items-center gap-1.5 font-bold">
-                    <Icons.AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-                    <span>Exact Duplicate Conflict</span>
+                <div className="p-3.5 bg-destructive/10 border border-destructive/30 rounded-2xl text-xs space-y-2 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 font-bold text-destructive">
+                      <Icons.AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+                      <span>Exact Duplicate Conflict</span>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold bg-destructive/20 text-destructive border border-destructive/30 px-2 py-0.5 rounded-md">
+                      4-Field Match
+                    </span>
                   </div>
-                  <p className="text-[11px] leading-relaxed text-destructive/90">
-                    A record with matching Vendor (&quot;{duplicateMatch.vendorName}&quot;), Invoice # (&quot;{duplicateMatch.invoiceNumber}&quot;), Date ({duplicateMatch.date}), and Amount (₹{duplicateMatch.amount.toLocaleString()}) already exists.
-                  </p>
+                  <div className="text-[11px] leading-relaxed text-muted-foreground space-y-1">
+                    <p>A document with matching 4-field criteria already exists in the system:</p>
+                    <div className="p-2 rounded-xl bg-background/80 border border-border text-[11px] font-mono text-foreground">
+                      <div className="font-bold truncate">{duplicateMatch.vendorName}</div>
+                      <div>
+                        #{duplicateMatch.invoiceNumber} • {duplicateMatch.date} • <span className="text-emerald-400 font-bold">{formatCurrency(duplicateMatch.amount)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pt-1.5 flex items-center gap-2 flex-wrap border-t border-destructive/20">
+                    <button
+                      type="button"
+                      onClick={() => setIsComparisonOpen(true)}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-destructive hover:text-destructive-foreground hover:bg-destructive bg-destructive/15 border border-destructive/30 px-3 py-1.5 rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
+                    >
+                      <Icons.Columns className="w-3.5 h-3.5" />
+                      <span>Review Side-by-Side</span>
+                    </button>
+
+                    {(duplicateMatch.fileUrl || duplicateMatch.fileData) && (
+                      <a
+                        href={duplicateMatch.fileUrl || duplicateMatch.fileData || undefined}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-secondary-foreground hover:text-foreground bg-secondary hover:bg-accent px-2.5 py-1.5 rounded-xl border border-border transition-colors"
+                      >
+                        <Icons.ExternalLink className="w-3.5 h-3.5 text-primary" />
+                        <span>Open Conflicting Doc</span>
+                      </a>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -828,6 +863,36 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
           )}
         </aside>
       </div>
+
+      {/* Side-by-Side Duplicate Review Modal */}
+      {duplicateMatch && (
+        <SideBySideDuplicateReviewModal
+          isOpen={isComparisonOpen}
+          onClose={() => setIsComparisonOpen(false)}
+          target={{
+            draft: {
+              invoice: {
+                vendorName,
+                invoiceNumber,
+                date,
+                amount,
+                type,
+                siteId,
+              },
+              file: {
+                fileName: activeDocument.fileName,
+                fileType: activeDocument.fileType,
+                fileSize: activeDocument.fileSize,
+                fileData: activeDocument.fileData,
+                blobUrl: activeDocument.fileUrl,
+              },
+              label: `Current Document (${activeDocument.invoiceNumber})`,
+            },
+            existingDoc: duplicateMatch,
+          }}
+          siteMap={siteMap}
+        />
+      )}
     </div>
   );
 };

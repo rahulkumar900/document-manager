@@ -3,6 +3,7 @@ import { SiteRecord, UserAccount, DocumentRecord, DocumentType } from '@/lib/typ
 import { formatCurrency, formatFileSize, generateUUID, optimizeImageForAi, getDocumentFingerprint, findDatabaseDuplicate } from '@/lib/utils';
 import { uploadFileToSupabaseStorage, saveDocumentToSupabase, getStoredDocuments } from '@/lib/store';
 import { Icons } from '../ui/icons';
+import { SideBySideDuplicateReviewModal, DuplicateComparisonTarget } from '../preview/SideBySideDuplicateReviewModal';
 
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 Megabytes per file
 
@@ -93,6 +94,10 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
   // Active Review Draft Persistence State
   const [isDraftRestored, setIsDraftRestored] = useState<boolean>(false);
   const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState<boolean>(false);
+  const [comparisonTarget, setComparisonTarget] = useState<DuplicateComparisonTarget | null>(null);
+  const [isComparisonOpen, setIsComparisonOpen] = useState<boolean>(false);
+
+  const siteMap = useMemo(() => new Map(sites.map((s) => [s.id, s])), [sites]);
 
   // Fallback to locally stored documents if existingDocuments prop is empty
   const allKnownDocuments = useMemo<DocumentRecord[]>(() => {
@@ -157,6 +162,46 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
     });
     return count;
   }, [invoiceDuplicateMap]);
+
+  const handleOpenSideBySide = (inv: InvoiceDraftItem) => {
+    const dupInfo = invoiceDuplicateMap.get(inv.id);
+    if (!dupInfo || !dupInfo.isDuplicate) return;
+
+    const sourceFile = uploadedFiles.find((f) => f.id === inv.fileId);
+    const invoiceIndex = invoices.findIndex((i) => i.id === inv.id);
+
+    if (dupInfo.type === 'batch' && dupInfo.matchedBatchIndex !== undefined) {
+      const peerIndex = dupInfo.matchedBatchIndex - 1;
+      const peerInv = invoices[peerIndex];
+      const peerFile = peerInv ? uploadedFiles.find((f) => f.id === peerInv.fileId) : undefined;
+
+      setComparisonTarget({
+        draft: {
+          invoice: inv,
+          file: sourceFile,
+          label: `Draft Item #${invoiceIndex + 1} (${sourceFile?.file.name || 'Uploaded File'})`,
+        },
+        matchedBatchItem: peerInv
+          ? {
+              invoice: peerInv,
+              file: peerFile,
+              batchIndex: dupInfo.matchedBatchIndex,
+            }
+          : undefined,
+      });
+    } else if (dupInfo.matchedExistingDoc) {
+      setComparisonTarget({
+        draft: {
+          invoice: inv,
+          file: sourceFile,
+          label: `Draft Item #${invoiceIndex + 1} (${sourceFile?.file.name || 'Uploaded File'})`,
+        },
+        existingDoc: dupInfo.matchedExistingDoc,
+      });
+    }
+
+    setIsComparisonOpen(true);
+  };
 
   // Review Assistance & Scroll Synchronization Refs
   const invoiceListContainerRef = useRef<HTMLDivElement>(null);
@@ -1924,27 +1969,101 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                           </div>
 
                           {/* Fields */}
-                          {/* Duplicate Inline Warning Banner */}
-                          {invoiceDuplicateMap.get(inv.id)?.isDuplicate && (
-                            <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-xl text-xs space-y-1 animate-in fade-in">
-                              <div className="flex items-center gap-1.5 font-bold text-destructive">
-                                <Icons.AlertTriangle className="w-4 h-4 shrink-0" />
-                                <span>Duplicate Entry Detected</span>
+                          {/* Duplicate Inline Warning Banner with Details & Side-by-Side Review */}
+                          {invoiceDuplicateMap.get(inv.id)?.isDuplicate && (() => {
+                            const dupInfo = invoiceDuplicateMap.get(inv.id)!;
+                            const isBatch = dupInfo.type === 'batch';
+                            const existing = dupInfo.matchedExistingDoc;
+                            const matchedBatchIdx = dupInfo.matchedBatchIndex;
+
+                            return (
+                              <div className="p-3.5 bg-destructive/10 border border-destructive/30 rounded-2xl text-xs space-y-2.5 animate-in fade-in">
+                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                  <div className="flex items-center gap-1.5 font-bold text-destructive">
+                                    <Icons.AlertTriangle className="w-4 h-4 shrink-0" />
+                                    <span>Exact 4-Field Duplicate Conflict</span>
+                                  </div>
+                                  <span className="text-[10px] font-mono font-bold bg-destructive/20 text-destructive border border-destructive/30 px-2 py-0.5 rounded-md">
+                                    {isBatch ? `In-Batch Match (#${matchedBatchIdx})` : 'Existing Database Document'}
+                                  </span>
+                                </div>
+
+                                <div className="text-[11px] text-muted-foreground leading-relaxed">
+                                  {isBatch ? (
+                                    <p>
+                                      Matches <strong className="text-foreground">Invoice #{matchedBatchIdx}</strong> in this current batch with identical Vendor Name, Invoice #, Date, and Amount.
+                                    </p>
+                                  ) : (
+                                    <div className="space-y-1.5">
+                                      <p>An identical document is already stored in the system with all 4 matching criteria:</p>
+                                      <div className="p-2.5 rounded-xl bg-background/80 border border-border flex items-center justify-between gap-2 flex-wrap text-foreground font-mono text-[11px]">
+                                        <div className="flex items-center gap-2 truncate">
+                                          <Icons.File className="w-3.5 h-3.5 text-primary shrink-0" />
+                                          <span className="font-bold truncate">{existing?.vendorName}</span>
+                                          <span className="text-muted-foreground">•</span>
+                                          <span>#{existing?.invoiceNumber}</span>
+                                          <span className="text-muted-foreground">•</span>
+                                          <span>{existing?.date}</span>
+                                          <span className="text-muted-foreground">•</span>
+                                          <span className="text-emerald-400 font-bold">{formatCurrency(existing?.amount || 0)}</span>
+                                        </div>
+                                        {existing?.fileName && (
+                                          <span className="text-[10px] text-muted-foreground truncate max-w-[150px]">
+                                            ({existing.fileName})
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Actionable Link & Side-by-Side Review Button */}
+                                <div className="pt-2 flex items-center justify-between gap-2 flex-wrap border-t border-destructive/20">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenSideBySide(inv);
+                                      }}
+                                      className="inline-flex items-center gap-1.5 text-xs font-bold text-destructive hover:text-destructive-foreground hover:bg-destructive bg-destructive/15 border border-destructive/30 px-3 py-1.5 rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
+                                      title="Open side-by-side comparison to visually inspect both documents"
+                                    >
+                                      <Icons.Columns className="w-3.5 h-3.5" />
+                                      <span>Review Side-by-Side</span>
+                                    </button>
+
+                                    {!isBatch && (existing?.fileUrl || existing?.fileData) && (
+                                      <a
+                                        href={existing.fileUrl || existing.fileData || undefined}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-secondary-foreground hover:text-foreground bg-secondary hover:bg-accent px-2.5 py-1.5 rounded-xl border border-border transition-colors"
+                                        title="Open existing document in a new tab"
+                                      >
+                                        <Icons.ExternalLink className="w-3.5 h-3.5 text-primary" />
+                                        <span>Open Stored Doc</span>
+                                      </a>
+                                    )}
+                                  </div>
+
+                                  {invoices.length > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveInvoice(inv.id);
+                                      }}
+                                      className="text-[11px] text-destructive hover:underline cursor-pointer font-semibold"
+                                    >
+                                      Discard this draft
+                                    </button>
+                                  )}
+                                </div>
                               </div>
-                              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                {invoiceDuplicateMap.get(inv.id)?.type === 'batch' ? (
-                                  <>Matches <strong>Item #{invoiceDuplicateMap.get(inv.id)?.matchedBatchIndex}</strong> in this upload batch with identical Vendor Name, Invoice #, Date, and Amount.</>
-                                ) : (
-                                  <>
-                                    Identical document already exists in your database:
-                                    <span className="font-mono text-foreground block mt-0.5 font-semibold">
-                                      {invoiceDuplicateMap.get(inv.id)?.matchedExistingDoc?.vendorName} • #{invoiceDuplicateMap.get(inv.id)?.matchedExistingDoc?.invoiceNumber} • {invoiceDuplicateMap.get(inv.id)?.matchedExistingDoc?.date} • {formatCurrency(invoiceDuplicateMap.get(inv.id)?.matchedExistingDoc?.amount || 0)}
-                                    </span>
-                                  </>
-                                )}
-                              </p>
-                            </div>
-                          )}
+                            );
+                          })()}
 
                           <div className="space-y-3.5">
                             <div>
@@ -2250,14 +2369,33 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
                       </div>
                     </div>
 
-                    {dup?.type === 'database' && dup.matchedExistingDoc && (
-                      <div className="text-[11px] text-muted-foreground flex items-center gap-2">
-                        <span>Database match:</span>
-                        <span className="font-mono text-foreground font-semibold">
-                          Doc #{dup.matchedExistingDoc.invoiceNumber} • {dup.matchedExistingDoc.date} • {formatCurrency(dup.matchedExistingDoc.amount)}
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-border flex-wrap">
+                      {dup?.type === 'database' && dup.matchedExistingDoc ? (
+                        <div className="text-[11px] text-muted-foreground flex items-center gap-2 flex-wrap">
+                          <span>Database match:</span>
+                          <span className="font-mono text-foreground font-semibold">
+                            Doc #{dup.matchedExistingDoc.invoiceNumber} • {dup.matchedExistingDoc.date} • {formatCurrency(dup.matchedExistingDoc.amount)}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="text-[11px] text-muted-foreground">
+                          Matches Invoice #{dup?.matchedBatchIndex} in this upload batch
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsDuplicateModalOpen(false);
+                          handleOpenSideBySide(inv);
+                        }}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-destructive hover:underline cursor-pointer ml-auto"
+                        title="Compare this item side-by-side"
+                      >
+                        <Icons.Columns className="w-3.5 h-3.5" />
+                        <span>Compare Side-by-Side</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
             </div>
@@ -2294,6 +2432,34 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Side-by-Side Duplicate Review Modal */}
+      <SideBySideDuplicateReviewModal
+        isOpen={isComparisonOpen}
+        onClose={() => setIsComparisonOpen(false)}
+        target={comparisonTarget}
+        siteMap={siteMap}
+        onDiscardDraft={
+          comparisonTarget?.draft.invoice.id
+            ? () => {
+                handleRemoveInvoice(comparisonTarget.draft.invoice.id!);
+                setIsComparisonOpen(false);
+              }
+            : undefined
+        }
+        onEditDraft={
+          comparisonTarget?.draft.invoice.id
+            ? () => {
+                const draftInv = invoices.find((i) => i.id === comparisonTarget.draft.invoice.id);
+                if (draftInv) {
+                  setActiveFileId(draftInv.fileId);
+                  scrollToInvoiceForFile(draftInv.fileId);
+                }
+                setIsComparisonOpen(false);
+              }
+            : undefined
+        }
+      />
     </div>
   );
 };
