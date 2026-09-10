@@ -38,13 +38,19 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
   const [isStorageMissing, setIsStorageMissing] = useState(false);
   const [isUploadingReplacement, setIsUploadingReplacement] = useState(false);
   const [isMobileDevice, setIsMobileDevice] = useState(false);
+  const [useGoogleDocsViewer, setUseGoogleDocsViewer] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
       const isMobile = /android|iphone|ipad|ipod|windows phone|iemobile|blackberry/i.test(userAgent);
+      const isAndroid = /android/i.test(userAgent);
       setIsMobileDevice(isMobile);
+      // Android browsers cannot render raw PDFs in iframes, so default to Google Docs viewer for HTTP URLs
+      if (isAndroid) {
+        setUseGoogleDocsViewer(true);
+      }
     }
   }, []);
 
@@ -354,11 +360,21 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
                       {activeDocument.fileName || 'document.pdf'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                     {activeDocument.fileSize && (
                       <span className="text-[11px] font-mono bg-secondary px-2 py-0.5 rounded text-secondary-foreground hidden sm:inline-block">
                         {formatFileSize(activeDocument.fileSize)}
                       </span>
+                    )}
+                    {fileSource.startsWith('http') && (
+                      <button
+                        type="button"
+                        onClick={() => setUseGoogleDocsViewer((prev) => !prev)}
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-secondary-foreground hover:text-foreground bg-secondary hover:bg-accent px-2 py-1 rounded-lg border border-border transition-colors cursor-pointer"
+                        title={useGoogleDocsViewer ? 'Switch to Direct PDF Viewer' : 'Switch to Google Docs Viewer'}
+                      >
+                        {useGoogleDocsViewer ? 'Direct PDF' : 'Google Docs'}
+                      </button>
                     )}
                     <a
                       href={fileSource}
@@ -408,7 +424,7 @@ export const DocumentPreviewView: React.FC<DocumentPreviewViewProps> = ({
                 ) : (
                   <iframe
                     src={
-                      isMobileDevice && fileSource.startsWith('http')
+                      useGoogleDocsViewer && fileSource.startsWith('http')
                         ? `https://docs.google.com/viewer?url=${encodeURIComponent(fileSource)}&embedded=true`
                         : fileSource
                     }
