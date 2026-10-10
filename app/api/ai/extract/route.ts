@@ -61,8 +61,9 @@ const invoiceBatchSchema: Schema = {
 
 // Verified active models in order of instant latency, high quota availability, and accuracy
 const CANDIDATE_MODELS = [
-  'gemini-3.1-flash-lite',
+  'gemini-3.8-flash',
   'gemini-3.6-flash',
+  'gemini-3.1-flash-lite',
 ];
 
 // Persistent client cache for HTTP keep-alive connection reuse across Vercel invocations
@@ -142,31 +143,102 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const formData = await req.formData();
-    // Accept either multiple files ('files') or single file ('file')
-    const filesList = formData.getAll('files') as File[];
-    const singleFile = formData.get('file') as File | null;
-    const files: File[] = filesList.length > 0 ? filesList : (singleFile ? [singleFile] : []);
+class FileTooLargeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'FileTooLargeError';
+  }
+}
 
-    if (files.length === 0) {
-      return NextResponse.json({ success: false, error: 'No document file was provided.' }, { status: 400 });
+    const contentType = req.headers.get('content-type') || '';
+
+    interface DocumentInput {
+      file?: File;
+      url?: string;
+      name: string;
+      mimeType?: string;
     }
 
-    // Strict file size & mime validation across files
-    for (const f of files) {
-      if (f.size > MAX_FILE_SIZE_BYTES) {
-        return NextResponse.json(
-          { success: false, error: `File "${f.name}" (${(f.size / (1024 * 1024)).toFixed(1)} MB) exceeds maximum limit of 25 MB.` },
-          { status: 413 }
-        );
+    const documentInputs: DocumentInput[] = [];
+
+    if (contentType.includes('application/json')) {
+      const body = await req.json().catch(() => ({}));
+      if (body.documents && Array.isArray(body.documents)) {
+        for (const doc of body.documents) {
+          if (doc?.url) {
+            documentInputs.push({
+              url: doc.url,
+              name: doc.name || 'document.pdf',
+              mimeType: doc.mimeType,
+            });
+          }
+        }
+      } else if (body.fileUrl) {
+        documentInputs.push({
+          url: body.fileUrl,
+          name: body.fileName || body.name || 'document.pdf',
+          mimeType: body.fileType || body.mimeType,
+        });
       }
-      const mimeType = f.type || (f.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
-      if (f.type && !ALLOWED_MIME_TYPES.has(f.type.toLowerCase()) && !f.type.startsWith('image/')) {
-        return NextResponse.json(
-          { success: false, error: `Unsupported file format for "${f.name}" (${f.type}). Supported types: PDF, PNG, JPG, WEBP.` },
-          { status: 415 }
-        );
+    } else {
+      const formData = await req.formData();
+      const filesList = formData.getAll('files') as File[];
+      const singleFile = formData.get('file') as File | null;
+      const rawFileUrls = formData.get('fileUrls') as string | null;
+      const rawFileUrl = formData.get('fileUrl') as string | null;
+      const rawDocuments = formData.get('documents') as string | null;
+
+      if (rawDocuments) {
+        try {
+          const parsedDocs = JSON.parse(rawDocuments);
+          if (Array.isArray(parsedDocs)) {
+            parsedDocs.forEach((d: any) => {
+              if (d?.url) {
+                documentInputs.push({
+                  url: d.url,
+                  name: d.name || 'document.pdf',
+                  mimeType: d.mimeType,
+                });
+              }
+            });
+          }
+        } catch {}
       }
+
+      if (rawFileUrls) {
+        try {
+          const parsed = JSON.parse(rawFileUrls);
+          if (Array.isArray(parsed)) {
+            parsed.forEach((u: any) => {
+              const url = typeof u === 'string' ? u : u?.url;
+              const name = typeof u === 'object' && u?.name ? u.name : 'document.pdf';
+              const mime = typeof u === 'object' && u?.mimeType ? u.mimeType : undefined;
+              if (url) documentInputs.push({ url, name, mimeType: mime });
+            });
+          }
+        } catch {}
+      }
+
+      if (rawFileUrl) {
+        documentInputs.push({
+          url: rawFileUrl,
+          name: (formData.get('fileName') as string) || 'document.pdf',
+          mimeType: (formData.get('fileType') as string) || undefined,
+        });
+      }
+
+      const files: File[] = filesList.length > 0 ? filesList : (singleFile ? [singleFile] : []);
+      files.forEach((f) => {
+        documentInputs.push({
+          file: f,
+          name: f.name,
+          mimeType: f.type,
+        });
+      });
+    }
+
+    if (documentInputs.length === 0) {
+      return NextResponse.json({ success: false, error: 'No document file or storage URL was provided.' }, { status: 400 });
     }
 
     const apiKey =
@@ -184,22 +256,60 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const isMultiDocBatch = files.length > 1;
+    // Convert each file or storage URL to base64 buffer
+    let fileBuffers: Array<{ docIndex: number; name: string; mimeType: string; base64Data: string }>;
+    try {
+      fileBuffers = await Promise.all(
+        documentInputs.map(async (doc, idx) => {
+          let buffer: Buffer;
+          let mimeType = doc.mimeType || (doc.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
 
-    // Convert each file to base64 buffer
-    const fileBuffers = await Promise.all(
-      files.map(async (f, idx) => {
-        const arrayBuffer = await f.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        const mimeType = f.type || (f.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
-        return {
-          docIndex: idx + 1,
-          name: f.name,
-          mimeType,
-          base64Data: buffer.toString('base64'),
-        };
-      })
-    );
+          if (doc.url) {
+            const fetchRes = await fetch(doc.url);
+            if (!fetchRes.ok) {
+              throw new Error(`Failed to download document from storage (${fetchRes.status}: ${fetchRes.statusText})`);
+            }
+            const arrayBuffer = await fetchRes.arrayBuffer();
+            buffer = Buffer.from(arrayBuffer);
+            const headerMime = fetchRes.headers.get('content-type');
+            if (headerMime && !doc.mimeType) {
+              mimeType = headerMime.split(';')[0].trim();
+            }
+          } else if (doc.file) {
+            const arrayBuffer = await doc.file.arrayBuffer();
+            buffer = Buffer.from(arrayBuffer);
+          } else {
+            throw new Error('Invalid document input: missing file or URL');
+          }
+
+          if (buffer.length > MAX_FILE_SIZE_BYTES) {
+            throw new FileTooLargeError(
+              `File "${doc.name}" (${(buffer.length / (1024 * 1024)).toFixed(1)} MB) exceeds maximum limit of 25 MB.`
+            );
+          }
+
+          const normalizedMime = mimeType.toLowerCase();
+          if (!ALLOWED_MIME_TYPES.has(normalizedMime) && !normalizedMime.startsWith('image/')) {
+            throw new Error(`Unsupported file format for "${doc.name}" (${mimeType}). Supported types: PDF, PNG, JPG, WEBP.`);
+          }
+
+          return {
+            docIndex: idx + 1,
+            name: doc.name,
+            mimeType,
+            base64Data: buffer.toString('base64'),
+          };
+        })
+      );
+    } catch (err: unknown) {
+      if (err instanceof FileTooLargeError) {
+        return NextResponse.json({ success: false, error: err.message }, { status: 413 });
+      }
+      const errMsg = (err as { message?: string })?.message || 'Error processing document buffer';
+      return NextResponse.json({ success: false, error: errMsg }, { status: 400 });
+    }
+
+    const isMultiDocBatch = fileBuffers.length > 1;
 
     const ai = getGeminiClient(apiKey);
     const startTime = Date.now();
@@ -274,7 +384,7 @@ Extract:
     const contentParts: any[] = [];
     if (isMultiDocBatch) {
       contentParts.push({
-        text: `Extract all records from Document 1 to Document ${files.length} into the "documents" array with matching docIndex.`,
+        text: `Extract all records from Document 1 to Document ${fileBuffers.length} into the "documents" array with matching docIndex.`,
       });
       fileBuffers.forEach((fb) => {
         contentParts.push({ text: `--- BEGIN DOCUMENT ${fb.docIndex} ---` });
@@ -297,10 +407,10 @@ Extract:
       });
     }
 
-    // Try candidate models in order with strict timeout
+    // Try candidate models in order with generous timeout & token budget
     for (const modelName of CANDIDATE_MODELS) {
       try {
-        const timeoutMs = isMultiDocBatch ? 18000 : 12000;
+        const timeoutMs = isMultiDocBatch ? 35000 : 25000;
         let timeoutHandle: NodeJS.Timeout | null = null;
         const timeoutPromise = new Promise<never>((_, reject) => {
           timeoutHandle = setTimeout(() => reject(new Error(`Model ${modelName} timed out after ${timeoutMs / 1000}s`)), timeoutMs);
@@ -314,7 +424,7 @@ Extract:
             responseMimeType: 'application/json',
             responseSchema: isMultiDocBatch ? multiDocBatchSchema : invoiceBatchSchema,
             temperature: 0.0,
-            maxOutputTokens: isMultiDocBatch ? 2048 : 1024,
+            maxOutputTokens: isMultiDocBatch ? 8192 : 4096,
             thinkingConfig: { thinkingBudget: 0 },
           },
         });
@@ -328,10 +438,27 @@ Extract:
           parsed = JSON.parse(responseText);
         } catch {
           const match = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-          if (match) {
-            parsed = JSON.parse(match[1]);
-          } else {
-            throw new Error(`AI returned invalid JSON: ${responseText.slice(0, 100)}`);
+          const rawCandidate = (match ? match[1] : responseText).trim();
+          try {
+            parsed = JSON.parse(rawCandidate);
+          } catch {
+            // Self-repair truncated JSON (in case model stops before closing braces)
+            try {
+              let cleaned = rawCandidate
+                .replace(/,\s*$/, '')
+                .replace(/"[^"]*$/, '')
+                .replace(/:\s*$/, ': null')
+                .replace(/,\s*$/, '');
+              const openBraces = (cleaned.match(/\{/g) || []).length;
+              const closeBraces = (cleaned.match(/\}/g) || []).length;
+              const openBrackets = (cleaned.match(/\[/g) || []).length;
+              const closeBrackets = (cleaned.match(/\]/g) || []).length;
+              for (let i = 0; i < openBrackets - closeBrackets; i++) cleaned += ']';
+              for (let i = 0; i < openBraces - closeBraces; i++) cleaned += '}';
+              parsed = JSON.parse(cleaned);
+            } catch {
+              throw new Error(`AI returned invalid JSON: ${responseText.slice(0, 100)}`);
+            }
           }
         }
 
@@ -383,7 +510,7 @@ Extract:
     }
 
     const durationMs = Date.now() - startTime;
-    console.log(`[Gemini API] Batch (${files.length} doc) completed via ${usedModelName} in ${durationMs}ms`);
+    console.log(`[Gemini API] Batch (${fileBuffers.length} doc) completed via ${usedModelName} in ${durationMs}ms`);
 
     const normalizeInvoiceItem = (inv: Record<string, unknown>, idx: number) => {
       const rawDate = (inv.date as string) || '';
@@ -431,14 +558,14 @@ Extract:
 
     if (isMultiDocBatch) {
       const docsArray = (rawParsedData.documents as Array<{ docIndex: number; invoices: Array<Record<string, unknown>> }>) || [];
-      const docResults = files.map((file, idx) => {
+      const docResults = fileBuffers.map((fb, idx) => {
         const docIdx = idx + 1;
         const matched = docsArray.find((d) => d.docIndex === docIdx);
         const invList = matched?.invoices && Array.isArray(matched.invoices) ? matched.invoices : [];
         const normalized = invList.map((inv, i) => normalizeInvoiceItem(inv, i));
         return {
           docIndex: docIdx,
-          fileName: file.name,
+          fileName: fb.name,
           invoices: normalized,
         };
       });

@@ -16,6 +16,8 @@ export interface UploadedFileItem {
   fileSize: number;
   status: 'scanning' | 'ready' | 'error';
   statusMessage?: string;
+  publicUrl?: string;
+  filePath?: string;
 }
 
 export interface InvoiceDraftItem {
@@ -514,6 +516,34 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
     setIsDragging(false);
   };
 
+  const ensureFileInStorage = async (fileItem: UploadedFileItem): Promise<{ publicUrl: string; filePath: string } | null> => {
+    if (fileItem.publicUrl && fileItem.filePath) {
+      return { publicUrl: fileItem.publicUrl, filePath: fileItem.filePath };
+    }
+    try {
+      const uploadRes = await uploadFileToSupabaseStorage(
+        fileItem.file,
+        targetSiteId || selectedSiteId || 'default',
+        fileItem.id
+      );
+      if (uploadRes.success && uploadRes.publicUrl && uploadRes.filePath) {
+        fileItem.publicUrl = uploadRes.publicUrl;
+        fileItem.filePath = uploadRes.filePath;
+        setUploadedFiles((prev) =>
+          prev.map((f) =>
+            f.id === fileItem.id
+              ? { ...f, publicUrl: uploadRes.publicUrl, filePath: uploadRes.filePath }
+              : f
+          )
+        );
+        return { publicUrl: uploadRes.publicUrl, filePath: uploadRes.filePath };
+      }
+    } catch (err) {
+      console.warn('Storage pre-upload error:', err);
+    }
+    return null;
+  };
+
   const processSelectedFiles = async (fileList: FileList | File[]) => {
     setFileError(null);
     setUploadErrorMessage(null);
@@ -630,19 +660,65 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
       let failureError = '';
       let isRateLimitError = false;
 
+      const LARGE_FILE_LIMIT = 3 * 1024 * 1024;
+      const totalRawBytes = chunk.reduce((sum, item) => sum + item.file.size, 0);
+      let shouldUseCloudStorage =
+        chunk.some((item) => item.file.size >= LARGE_FILE_LIMIT) ||
+        totalRawBytes >= 3.5 * 1024 * 1024;
+
       // Fast try with 1 instant retry if needed
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
-          const body = new FormData();
-          for (const item of chunk) {
-            const fileToScan = await optimizeImageForAi(item.file);
-            body.append('files', fileToScan);
+          let res: Response;
+
+          if (shouldUseCloudStorage) {
+            // Upload to Supabase Storage first to bypass Vercel's 4.5MB Serverless Function payload limit
+            const docsPayload = [];
+            for (const item of chunk) {
+              const storageInfo = await ensureFileInStorage(item);
+              if (storageInfo?.publicUrl) {
+                docsPayload.push({
+                  url: storageInfo.publicUrl,
+                  name: item.file.name,
+                  mimeType: item.fileType,
+                });
+              }
+            }
+
+            if (docsPayload.length === chunk.length) {
+              res = await fetch('/api/ai/extract', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ documents: docsPayload }),
+              });
+            } else {
+              const body = new FormData();
+              for (const item of chunk) {
+                const fileToScan = await optimizeImageForAi(item.file);
+                body.append('files', fileToScan);
+              }
+              res = await fetch('/api/ai/extract', {
+                method: 'POST',
+                body,
+              });
+            }
+          } else {
+            const body = new FormData();
+            for (const item of chunk) {
+              const fileToScan = await optimizeImageForAi(item.file);
+              body.append('files', fileToScan);
+            }
+            res = await fetch('/api/ai/extract', {
+              method: 'POST',
+              body,
+            });
           }
 
-          const res = await fetch('/api/ai/extract', {
-            method: 'POST',
-            body,
-          });
+          // If Vercel returned HTTP 413 (Payload Too Large), switch to Cloud Storage and retry
+          if (res.status === 413 && !shouldUseCloudStorage) {
+            shouldUseCloudStorage = true;
+            continue;
+          }
 
           const json = await res.json().catch(() => ({}));
 
@@ -899,16 +975,50 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
     let failureError = '';
     let isRateLimitError = false;
 
+    const LARGE_FILE_LIMIT = 3 * 1024 * 1024;
+    let shouldUseCloudStorage = fileItem.file.size >= LARGE_FILE_LIMIT || !!fileItem.publicUrl;
+
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        const fileToScan = await optimizeImageForAi(fileItem.file);
-        const body = new FormData();
-        body.append('file', fileToScan);
+        let res: Response;
 
-        const res = await fetch('/api/ai/extract', {
-          method: 'POST',
-          body,
-        });
+        if (shouldUseCloudStorage) {
+          const storageInfo = await ensureFileInStorage(fileItem);
+          if (storageInfo?.publicUrl) {
+            res = await fetch('/api/ai/extract', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                fileUrl: storageInfo.publicUrl,
+                fileName: fileItem.file.name,
+                fileType: fileItem.fileType,
+              }),
+            });
+          } else {
+            const fileToScan = await optimizeImageForAi(fileItem.file);
+            const body = new FormData();
+            body.append('file', fileToScan);
+            res = await fetch('/api/ai/extract', {
+              method: 'POST',
+              body,
+            });
+          }
+        } else {
+          const fileToScan = await optimizeImageForAi(fileItem.file);
+          const body = new FormData();
+          body.append('file', fileToScan);
+
+          res = await fetch('/api/ai/extract', {
+            method: 'POST',
+            body,
+          });
+        }
+
+        // If Vercel returned HTTP 413 (Payload Too Large), switch to Cloud Storage and retry
+        if (res.status === 413 && !shouldUseCloudStorage) {
+          shouldUseCloudStorage = true;
+          continue;
+        }
 
         const json = await res.json().catch(() => ({}));
 
@@ -1154,6 +1264,15 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
 
     let uploadedCount = 0;
     for (const fileItem of uploadedFiles) {
+      if (fileItem.publicUrl && fileItem.filePath) {
+        fileUploadMap.set(fileItem.id, {
+          publicUrl: fileItem.publicUrl,
+          filePath: fileItem.filePath,
+        });
+        uploadedCount++;
+        setUploadProgress(30 + Math.round((uploadedCount / uploadedFiles.length) * 35));
+        continue;
+      }
       const docBaseId = generateUUID();
       const uploadRes = await uploadFileToSupabaseStorage(fileItem.file, finalSiteId, docBaseId);
       if (uploadRes.success && uploadRes.publicUrl) {
